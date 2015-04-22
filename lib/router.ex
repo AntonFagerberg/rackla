@@ -125,6 +125,7 @@ defmodule Router do
     |> response(conn)
   end
   
+  # Access-token from the Instagram API is required to use this end-point.
   get "/instagram" do
     require Logger
     
@@ -170,7 +171,6 @@ defmodule Router do
       |> response(conn)
       |> timer("Responded to query")
       
-    # Proper :ok check here should be added
     case chunk(conn, "</body></html>") do
       {:ok, new_conn} -> new_conn
 
