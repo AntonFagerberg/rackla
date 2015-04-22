@@ -2,6 +2,8 @@
   "cowboy": {:hex, :cowboy, "1.0.0"},
   "cowlib": {:hex, :cowlib, "1.0.1"},
   "dht_ring": {:git, "git://github.com/EchoTeam/dht_ring.git", "d5b880ad76aefc81547dbb76b48a97a01d52ff41", [branch: "master"]},
+  "earmark": {:hex, :earmark, "0.1.15"},
+  "ex_doc": {:hex, :ex_doc, "0.7.2"},
   "goldrush": {:git, "git://github.com/DeadZen/goldrush.git", "1d883423ac360b3536ca52dc733a0164bacf3109", [tag: "0.1.5"]},
   "hackney": {:hex, :hackney, "1.1.0"},
   "httpoison": {:hex, :httpoison, "0.6.2"},
