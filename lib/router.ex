@@ -125,8 +125,6 @@ defmodule Router do
     |> response(conn)
   end
   
-  # This is a hack where image-tags are sent directly to the client, they will
-  # render in Firefox without any modifications but not in Chrome...
   get "/instagram" do
     binary_to_img = fn(item) ->
       Dict.update!(item, :body, fn(body) ->
@@ -134,26 +132,36 @@ defmodule Router do
       end)
     end
     
-    "https://api.instagram.com/v1/users/self/feed?count=50&access_token=" <> conn.query_string
-    |> timer("Got URL")
-    |> request
-    |> timer("Executed request")
-    |> collect_response |> Enum.at(0)
-    |> timer("Collected response")
-    |> Dict.get(:body)
-    |> timer("Got body")
-    |> Poison.decode!
-    |> timer("Decoded JSON")
-    |> Dict.get("data")
-    |> timer("Extracted data")
-    |> Enum.map(&(&1["images"]["standard_resolution"]["url"]))
-    |> timer("Mapped image url")
-    |> request
-    |> timer("Executed request")
-    |> transform(binary_to_img)
-    |> timer("Added transform function")
-    |> response(conn)
-    |> timer("Responded to query")
+    conn = 
+      conn
+      |> send_chunked(200)
+      |> chunk("<!doctype html><html lang=\"en\"><head></head><body>")
+      |> elem(1) # Proper :ok check here should be added
+      
+    conn =
+      "https://api.instagram.com/v1/users/self/feed?count=50&access_token=" <> conn.query_string
+      |> timer("Got URL")
+      |> request
+      |> timer("Executed request")
+      |> collect_response |> Enum.at(0)
+      |> timer("Collected response")
+      |> Dict.get(:body)
+      |> timer("Got body")
+      |> Poison.decode!
+      |> timer("Decoded JSON")
+      |> Dict.get("data")
+      |> timer("Extracted data")
+      |> Enum.map(&(&1["images"]["standard_resolution"]["url"]))
+      |> timer("Mapped image url")
+      |> request
+      |> timer("Executed request")
+      |> transform(binary_to_img)
+      |> timer("Added transform function")
+      |> response(conn)
+      |> timer("Responded to query")
+      
+    # Proper :ok check here should be added
+    chunk(conn, "</body></html>") |> elem(1)
   end
 
   match _ do
