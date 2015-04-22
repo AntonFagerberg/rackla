@@ -254,8 +254,11 @@ defmodule CrocodilePear do
   end
 
   @doc """
-  `request` function uses `conn` from Plug in order to transmit the  
-  responses from the producers to the client over HTTP.
+  `response` uses `conn` from Plug in order to transmit the responses from the 
+  producers to the client over HTTP.
+  
+  If there is only one item in the `producers` list, that `producer`'s headers
+  and status code will be added to the response per default if not already sent.
   
   Args:
     * `producers` - List of producers (Elixir PIDs which follows the protocol
