@@ -9,8 +9,17 @@ The protocol used between the Elixir process is by default abstracted away. By u
 
 CrocodilePear utilizes [Plug](https://github.com/elixir-lang/plug) to communicate with the clients over HTTP. Internally, we also use [HTTPoison](https://github.com/edgurgel/httpoison) (built on [Hackney](https://github.com/benoitc/hackney)) to make HTTP requests and [Poison](https://github.com/devinus/poison) for dealing with JSON.
 
+## Installation
 
-## Starting the application
+You can add CrocodilePear to your existing application by adding the following Mix dependency:
+
+```TODO ADD HEX```
+
+You also have to include Plug yourself in order to create end-points which are used together with CrocodilePear as in the examples below.
+
+Alternatively, you can clone this GitHub repository in order to get a complete working setup with runnable example end-points and tests. If you clone this repository, see the sections below for how to start it up and how to deploy to Heroku.
+
+### Starting the application
 The application will be started automatically when running `iex -S mix`. You can also start it by running `mix server`. By default, it will start on port 4000, this can be changed either from the file `config/config.exs` or by creating a environment variable named PORT.
 
 You can also create an escript with `mix escript.build` and then run the file `crocodile_pear`.
@@ -18,7 +27,7 @@ You can also create an escript with `mix escript.build` and then run the file `c
 ### Deploy to Heroku
 The [Heroku Buildpack for Elixir](https://github.com/HashNuke/heroku-buildpack-elixir) works out of the box for CrocodilePear.
 
-## Tutorial
+## Tutorial (with Plug)
 
 ### Simple request/response
 A simple proxy can be created by exposing an endpoint `/proxy` where we get the target url from the query string, example: `/proxy?www.example.com`. We can then create a simple pipeline by starting with the query-string, piping it to the request function which will make a GET request to the URL from the query-string and finally piping the result to the response function. The response function will then take the `conn`-struct from Plug and respond to the client.
