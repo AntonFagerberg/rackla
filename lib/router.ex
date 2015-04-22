@@ -126,17 +126,27 @@ defmodule Router do
   end
   
   get "/instagram" do
+    require Logger
+    
     binary_to_img = fn(item) ->
       Dict.update!(item, :body, fn(body) ->
         "<img src=\"data:image/jpeg;base64,#{Base.encode64(body)}\" height=\"150px\" width=\"150px\">"
       end)
     end
     
-    conn = 
+    chunk_status = 
       conn
       |> send_chunked(200)
       |> chunk("<!doctype html><html lang=\"en\"><head></head><body>")
-      |> elem(1) # Proper :ok check here should be added
+    
+    conn =  
+      case chunk_status do
+        {:ok, new_conn} -> new_conn
+
+        {:error, reason} ->
+          Logger.error("Unable to chunk response: #{reason}")
+          conn
+      end
       
     conn =
       "https://api.instagram.com/v1/users/self/feed?count=50&access_token=" <> conn.query_string
@@ -161,7 +171,13 @@ defmodule Router do
       |> timer("Responded to query")
       
     # Proper :ok check here should be added
-    chunk(conn, "</body></html>") |> elem(1)
+    case chunk(conn, "</body></html>") do
+      {:ok, new_conn} -> new_conn
+
+      {:error, reason} ->
+        Logger.error("Unable to chunk response: #{reason}")
+        conn
+    end
   end
 
   match _ do

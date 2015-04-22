@@ -557,14 +557,20 @@ defmodule CrocodilePear do
     option_headers = Dict.get(options, :headers, [])
     option_status = Dict.get(options, :status, status)
     
-    {:ok, conn} =
+    chunk_status = 
       conn
       |> set_headers(Dict.merge(headers, option_headers))
       |> put_resp_header("content-encoding", "gzip")
       |> send_chunked(option_status)
       |> chunk(:zlib.gzip(body))
       
-    conn
+    case chunk_status do
+      {:ok, new_conn} -> new_conn
+
+      {:error, reason} ->
+        Logger.error("Unable to chunk response: #{reason}")
+        conn
+    end
   end
   
   defp response_compressed(producers, conn, options) when is_list(producers) do
@@ -578,7 +584,7 @@ defmodule CrocodilePear do
     option_headers = Dict.get(options, :headers, [])
     option_status = Dict.get(options, :status, 200)
     
-    {:ok, conn} =
+    chunk_status =
       if (conn.state == :chunked) do
         chunk(conn, body)
       else
@@ -589,7 +595,13 @@ defmodule CrocodilePear do
         |> chunk(body)
       end
     
-    conn
+    case chunk_status do
+      {:ok, new_conn} -> new_conn
+
+      {:error, reason} ->
+        Logger.error("Unable to chunk response: #{reason}")
+        conn
+    end
   end
   
   defp resend(consumer) do
@@ -657,8 +669,8 @@ defmodule CrocodilePear do
     receive do
       {^producer, :chunk, chunk} ->
         case chunk(conn, chunk) do
-          {:ok, conn} -> 
-            response_chunked(conn, producer)
+          {:ok, new_conn} -> 
+            response_chunked(new_conn, producer)
           
           {:error, reason} -> 
             Logger.error("Unable to chunk response: #{reason}")
