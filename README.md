@@ -9,15 +9,27 @@ The protocol used between the Elixir process is by default abstracted away. By u
 
 CrocodilePear utilizes [Plug](https://github.com/elixir-lang/plug) to communicate with the clients over HTTP. Internally, we also use [HTTPoison](https://github.com/edgurgel/httpoison) (built on [Hackney](https://github.com/benoitc/hackney)) to make HTTP requests and [Poison](https://github.com/devinus/poison) for dealing with JSON.
 
-## Installation
+## Minimal installation (as Mix dependency)
 
 You can add CrocodilePear to your existing application by adding the following Mix dependency:
 
-```TODO ADD HEX```
+```elixir
+defp deps do
+  [
+    #{:plug, "~> 0.10"},  # Optional for creating end-points
+    #{:cowboy, "~> 1.0"}, # Required if using Plug
+    {:crocodile_pear, "~> 1.0"} # TODO Fix correct
+  ]
+end
+```
 
 You also have to include Plug yourself in order to create end-points which are used together with CrocodilePear as in the examples below.
 
-Alternatively, you can clone this GitHub repository in order to get a complete working setup with runnable example end-points and tests. If you clone this repository, see the sections below for how to start it up and how to deploy to Heroku.
+This setup is more complicated and it is recommended that you do a "full installation", described below, for your projects.
+
+## Full installation (clone example project)
+
+You can clone this GitHub repository in order to get a complete working setup with runnable example end-points and tests. This includes all infrastructure needed to easily expose (run) your end-points or deploy your API gateway to Heroku. 
 
 ### Starting the application
 The application will be started automatically when running `iex -S mix`. You can also start it by running `mix server`. By default, it will start on port 4000, this can be changed either from the file `config/config.exs` or by creating a environment variable named PORT.
