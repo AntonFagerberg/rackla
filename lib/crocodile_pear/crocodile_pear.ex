@@ -443,6 +443,7 @@ defmodule CrocodilePear do
     defined by CrocodilePear).
   """
   @spec collect_response(producers) :: [response] | response
+  
   def collect_response(producers) when is_list(producers) do
     Enum.map(producers, &collect_response/1)
   end
@@ -549,8 +550,7 @@ defmodule CrocodilePear do
 
   ## Helpers
   
-  defp response_compressed(producers, conn, options \\ [])
-  
+  @spec response_compressed(producers, Conn.t, Dict.t) :: Conn.t
   defp response_compressed(producer, conn, options) when is_pid(producer) do
     %{body: body, headers: headers, status: status} = collect_response(producer)
     
@@ -604,6 +604,7 @@ defmodule CrocodilePear do
     end
   end
   
+  @spec resend(pid) :: :ok
   defp resend(consumer) do
     receive do
       {_producer, atom, msg} ->
@@ -613,8 +614,11 @@ defmodule CrocodilePear do
       {_producer, :done} ->
         send(consumer, { self, :done })
     end
+    
+    :ok
   end
   
+  @spec timer_messages(pid, pid, String.t) :: :ok
   defp timer_messages(producer, new_producer, label) do
     log_msg = fn(atom, label) ->
       case label do
@@ -633,9 +637,12 @@ defmodule CrocodilePear do
         log_msg.(:done, label)
         send(new_producer, { self, :done })
     end
+    
+    :ok
   end
 
 
+  @spec response_chunked_multi(Conn.t, [pid]) :: Conn.t
   defp response_chunked_multi(conn, []), do: conn
 
   defp response_chunked_multi(conn, producers) do
@@ -654,6 +661,7 @@ defmodule CrocodilePear do
     response_chunked_multi(conn, List.delete(producers, producer))
   end
 
+  @spec get_poison_chunk(reference, pid) :: :ok
   defp get_poison_chunk(id, consumer) do
     receive do
       %HTTPoison.AsyncChunk{chunk: chunk, id: ^id} ->
@@ -663,8 +671,11 @@ defmodule CrocodilePear do
       %HTTPoison.AsyncEnd{id: ^id} ->
         send(consumer, { self, :done })
     end
+    
+    :ok
   end
 
+  @spec response_chunked(Conn.t, pid) :: Conn.t
   defp response_chunked(conn, producer) do
     receive do
       {^producer, :chunk, chunk} ->
@@ -682,12 +693,14 @@ defmodule CrocodilePear do
     end
   end
 
+  @spec set_headers(Conn.t, Dict.t) :: Conn.t
   defp set_headers(conn, headers) do
     Enum.reduce(headers, conn, fn({key, value}, conn) ->
       put_resp_header(conn, key, value)
     end)
   end
 
+  @spec aggregate_response(pid, Dict.t) :: response
   defp aggregate_response(producer, response \\ %{}) do
     receive do
       {^producer, :chunk, chunk} ->
