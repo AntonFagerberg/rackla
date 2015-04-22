@@ -8,6 +8,7 @@ defmodule CrocodilePear.Mixfile do
       elixir: "~> 1.0",
       deps: deps,
       escript: escript,
+      package: package,
       description: "CrocodilePear is library used for building API-gateways."
     ]
   end
@@ -24,10 +25,24 @@ defmodule CrocodilePear.Mixfile do
     [
       {:poison, "~> 1.3"},
       {:httpoison, "~> 0.6"},
-      {:cowboy, "~> 1.0"},
-      {:plug, "~> 0.10"},
+      {:cowboy, "~> 1.0", only: :dev},
+      {:plug, "~> 0.10", only: :dev},
       {:earmark, "~> 0.1", only: :dev},
       {:ex_doc, "~> 0.7", only: :dev}
+    ]
+  end
+  
+  defp package do
+    [
+      contributors: ["Anton Fagerberg"],
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/AntonFagerberg/crocodile_pear"},
+      files: [
+        "lib/crocodile_pear/crocodile_pear.ex",
+        "mix.ex",
+        "README.md",
+        "LICENSE"
+      ]
     ]
   end
   
