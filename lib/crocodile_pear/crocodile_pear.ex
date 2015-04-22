@@ -283,19 +283,27 @@ defmodule CrocodilePear do
       set_response_headers = fn(conn, producer) ->
         receive do
           {^producer, :headers, response_headers} ->
-            option_headers = Dict.get(options, :headers, %{})
-            
-            conn
-            |> set_headers(response_headers)
-            |> set_headers(option_headers)
+            if (conn.state == :chunked) do
+              conn
+            else
+              option_headers = Dict.get(options, :headers, %{})
+              
+              conn
+              |> set_headers(response_headers)
+              |> set_headers(option_headers)
+            end
         end
       end
 
       set_response_status = fn(conn, producer) ->
         receive do
           {^producer, :status, status} -> 
-            option_status = Dict.get(options, :status, status)
-            send_chunked(conn, option_status)
+            if (conn.state == :chunked) do
+              conn
+            else
+              option_status = Dict.get(options, :status, status)
+              send_chunked(conn, option_status)
+            end
         end
       end
       
@@ -320,21 +328,15 @@ defmodule CrocodilePear do
       
       option_status = Dict.get(options, :status, 200)
       option_headers = Dict.get(options, :headers, %{})
-      
-      response_function = fn(conn, producer) ->
-        if (Dict.has_key?(options, :compress)) do
-          conn
-          |> set_headers(%{"content-encoding" =>  "gzip"})
-          |> response_compressed(producer)
-        else
-          response_chunked_multi(conn, producer)
-        end
+
+      if (conn.state == :chunked) do
+        response_chunked_multi(conn, producers)
+      else
+        conn
+        |> set_headers(option_headers)
+        |> send_chunked(option_status)
+        |> response_chunked_multi(producers)
       end
-      
-      conn
-      |> set_headers(option_headers)
-      |> send_chunked(option_status)
-      |> response_function.(producers)
     end
   end
   
@@ -569,19 +571,24 @@ defmodule CrocodilePear do
     body = 
       producers
       |> collect_response
-      |> Dict.get(:body)
+      |> Enum.map(&(Dict.get(&1, :body)))
+      |> Enum.join
       |> :zlib.gzip
     
     option_headers = Dict.get(options, :headers, [])
     option_status = Dict.get(options, :status, 200)
     
     {:ok, conn} =
-      conn
-      |> set_headers(option_headers)
-      |> put_resp_header("content-encoding", "gzip")
-      |> send_chunked(option_status)
-      |> chunk(:zlib.gzip(body))
-      
+      if (conn.state == :chunked) do
+        chunk(conn, body)
+      else
+        conn
+        |> set_headers(option_headers)
+        |> put_resp_header("content-encoding", "gzip")
+        |> send_chunked(option_status)
+        |> chunk(body)
+      end
+    
     conn
   end
   
