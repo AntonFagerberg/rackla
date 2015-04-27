@@ -210,7 +210,7 @@ defmodule CrocodilePear do
 
                 receive do
                   {:hackney_response, ^id, {:headers, headers}} ->
-                    send(consumer, { self, :headers, headers })
+                    send(consumer, { self, :headers, Enum.into(headers, %{}) })
                 end
 
                 receive do
