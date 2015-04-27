@@ -231,7 +231,7 @@ defmodule CrocodilePear do
                   { pid, :ready } -> pid
                 end
                 
-                Logger.warn("HTTP request failure: #{reason}")
+                Logger.warn("HTTP request failure: #{inspect(reason)}")
                 
                 send(consumer, { self, :status, Dict.get(request_map, :status, 500) })
                 send(consumer, { self, :meta, %{error: reason} })
@@ -573,7 +573,7 @@ defmodule CrocodilePear do
       {:ok, new_conn} -> new_conn
 
       {:error, reason} ->
-        Logger.error("Unable to chunk response: #{reason}")
+        Logger.error("Unable to chunk response: #{inspect(reason)}")
         conn
     end
   end
@@ -604,7 +604,7 @@ defmodule CrocodilePear do
       {:ok, new_conn} -> new_conn
 
       {:error, reason} ->
-        Logger.error("Unable to chunk response: #{reason}")
+        Logger.error("Unable to chunk response: #{inspect(reason)}")
         conn
     end
   end
@@ -692,7 +692,7 @@ defmodule CrocodilePear do
             response_chunked(new_conn, producer)
           
           {:error, reason} -> 
-            Logger.error("Unable to chunk response: #{reason}")
+            Logger.error("Unable to chunk response: #{inspect(reason)}")
             conn
         end
 
