@@ -197,6 +197,9 @@ There is currently no special XML support (or any other format except JSON). You
 ### Caching
 CrocodilePear has no built in support for caching but you can, for example, use [EchoTeams Erlang memcached client library](https://github.com/EchoTeam/mcd) which we've successfully experimented with.
 
+### Cross-Origin Resource Sharing (CORS) 
+In order to use CORS in your API gateway, you can use any tool which works with Plug such as [cors_plug](https://github.com/mschae/cors_plug).
+
 ## The MIT License (MIT)
 
 Copyright (c) 2015 Anton Fagerberg
