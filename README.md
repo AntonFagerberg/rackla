@@ -7,7 +7,7 @@ With CrocodilePear you can execute multiple HTTP-requests and transform them in 
 
 The protocol used between the Elixir process is by default abstracted away. By utilizing helper functions instead, the developer can gain the performance benefit without having to deal with any message passing. There is however nothing stopping the developers who want to tap directly in to the process messaging.
 
-CrocodilePear utilizes [Plug](https://github.com/elixir-lang/plug) to communicate with the clients over HTTP. Internally, we also use [HTTPoison](https://github.com/edgurgel/httpoison) (built on [Hackney](https://github.com/benoitc/hackney)) to make HTTP requests and [Poison](https://github.com/devinus/poison) for dealing with JSON.
+CrocodilePear utilizes [Plug](https://github.com/elixir-lang/plug) to communicate with the clients over HTTP. Internally, it uses [Hackney](https://github.com/benoitc/hackney) to make HTTP requests and [Poison](https://github.com/devinus/poison) for dealing with JSON.
 
 ## Minimal installation (as Mix dependency)
 

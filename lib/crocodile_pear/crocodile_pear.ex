@@ -6,7 +6,7 @@ defmodule CrocodilePear do
 
   The protocol used between the Elixir process is by default abstracted away. By utilizing helper functions instead, the developer can gain the performance benefit without having to deal with any message passing. There is however nothing stopping the developers who want to tap directly in to the process messaging.
 
-  CrocodilePear utilizes [Plug](https://github.com/elixir-lang/plug) to communicate with the clients over HTTP. Internally, we also use [HTTPoison](https://github.com/edgurgel/httpoison) (built on [Hackney](https://github.com/benoitc/hackney)) to make HTTP requests and [Poison](https://github.com/devinus/poison) for dealing with JSON.
+  CrocodilePear utilizes [Plug](https://github.com/elixir-lang/plug) to communicate with the clients over HTTP. Internally, it uses [Hackney](https://github.com/benoitc/hackney) to make HTTP requests and [Poison](https://github.com/devinus/poison) for dealing with JSON.
   
   ## Examples (with Plug)
 
@@ -164,6 +164,7 @@ defmodule CrocodilePear do
   Options:
     * `:insecure` - Boolean whether to perform SSL connections without checking
     the certificate. Default: false.
+    * `:connect_timeout` - Timeout for request in milliseconds. Default: 5_000.
     
   Keys which can be used in the request map:
     * `:url` - Request URL to call.
@@ -185,14 +186,20 @@ defmodule CrocodilePear do
       {:ok, producer} = 
         if (Dict.has_key?(request_map, :url)) do
           Task.start_link(fn ->
-            case HTTPoison.request(
-                Dict.get(request_map, :method, :get), 
-                Dict.fetch!(request_map, :url), 
-                Dict.get(request_map, :body, ""),
-                Dict.get(request_map, :headers, %{}),
-                [stream_to: self, hackney: [insecure: Dict.get(options, :insecure, false)]]
+            case :hackney.request(
+              Dict.get(request_map, :method, :get),
+              Dict.fetch!(request_map, :url),
+              Dict.get(request_map, :headers, []) |> Enum.into([]),
+              Dict.get(request_map, :body, ""),
+              [
+                {:connect_timeout, Dict.get(options, :connect_timeout, 5_000)},
+                {:recv_timeout, :infinity},
+                :async,
+                {:stream_to, self},
+                {:insecure, Dict.get(options, :insecure, false)}
+              ]
             ) do
-              {:ok, %HTTPoison.AsyncResponse{id: id}} ->
+              {:ok, id} ->
                 consumer = receive do
                   { pid, :ready } -> pid
                 end
@@ -202,19 +209,18 @@ defmodule CrocodilePear do
                 send(consumer, { self, :meta, Map.put(meta_map, :url, Dict.fetch!(request_map, :url)) })
 
                 receive do
-                  %HTTPoison.AsyncHeaders{headers: headers, id: ^id} ->
+                  {:hackney_response, ^id, {:headers, headers}} ->
                     send(consumer, { self, :headers, headers })
                 end
 
                 receive do
-                  %HTTPoison.AsyncStatus{code: status, id: ^id} -> 
-                    status
-                    send(consumer, { self, :status, status })
+                  {:hackney_response, ^id, {:status, code, _reason}} -> 
+                    send(consumer, { self, :status, code })
                 end
 
-                get_poison_chunk(id, consumer)
+                get_hackney_chunk(id, consumer)
                 
-              {:error, %HTTPoison.Error{reason: reason}} ->
+              {:error, reason} ->
                 consumer = receive do
                   { pid, :ready } -> pid
                 end
@@ -232,10 +238,10 @@ defmodule CrocodilePear do
               { pid, :ready } -> pid
             end
             
-            send(consumer, { self, :status, Dict.get(request_map, :status, 200)})
-            send(consumer, { self, :meta, Dict.get(request_map, :meta, %{})})
-            send(consumer, { self, :headers, Dict.get(request_map, :headers, %{})})
-            send(consumer, { self, :chunk, Dict.get(request_map, :body, "")})
+            send(consumer, { self, :status, Dict.get(request_map, :status, 200) })
+            send(consumer, { self, :meta, Dict.get(request_map, :meta, %{}) })
+            send(consumer, { self, :headers, Dict.get(request_map, :headers, %{}) })
+            send(consumer, { self, :chunk, Dict.get(request_map, :body, "") })
             send(consumer, { self, :done })
           end)
         end
@@ -652,15 +658,18 @@ defmodule CrocodilePear do
     response_chunked_multi(conn, List.delete(producers, producer))
   end
 
-  @spec get_poison_chunk(reference, pid) :: :ok
-  defp get_poison_chunk(id, consumer) do
+  @spec get_hackney_chunk(reference, pid) :: :ok
+  defp get_hackney_chunk(id, consumer) do
     receive do
-      %HTTPoison.AsyncChunk{chunk: chunk, id: ^id} ->
-        send(consumer, { self, :chunk, chunk })
-        get_poison_chunk(id, consumer)
+      {:hackney_response, ^id, {:error, reason}} -> 
+        IO.inspect(reason) #TODO
 
-      %HTTPoison.AsyncEnd{id: ^id} ->
+      {:hackney_response, ^id, :done} ->
         send(consumer, { self, :done })
+        
+      {:hackney_response, ^id, chunk} ->
+        send(consumer, { self, :chunk, chunk })
+        get_hackney_chunk(id, consumer)
     end
     
     :ok
