@@ -16,7 +16,7 @@ defmodule CrocodilePear.Mixfile do
   # Configuration for the OTP application
   def application do
     [
-      applications: [:logger, :httpoison, :cowboy, :plug],
+      applications: [:logger, :cowboy, :plug, :hackney],
       mod: {CrocodilePear.Application, []}
     ]
   end
@@ -24,9 +24,9 @@ defmodule CrocodilePear.Mixfile do
   defp deps do
     [
       {:poison, "~> 1.3"},
-      {:httpoison, "~> 0.6"},
-      {:cowboy, "~> 1.0", only: :dev},
-      {:plug, "~> 0.10", only: :dev},
+      {:hackney, "~> 1.1"},
+      {:cowboy, "~> 1.0"},
+      {:plug, "~> 0.10"},
       {:earmark, "~> 0.1", only: :dev},
       {:ex_doc, "~> 0.7", only: :dev}
     ]
