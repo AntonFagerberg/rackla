@@ -211,11 +211,17 @@ defmodule CrocodilePear do
                 receive do
                   {:hackney_response, ^id, {:headers, headers}} ->
                     send(consumer, { self, :headers, Enum.into(headers, %{}) })
+                    
+                  {:hackney_response, ^id, {:error, reason}} ->
+                    throw reason
                 end
 
                 receive do
                   {:hackney_response, ^id, {:status, code, _reason}} -> 
                     send(consumer, { self, :status, code })
+                    
+                  {:hackney_response, ^id, {:error, reason}} ->
+                    throw reason
                 end
 
                 get_hackney_chunk(id, consumer)
@@ -224,6 +230,8 @@ defmodule CrocodilePear do
                 consumer = receive do
                   { pid, :ready } -> pid
                 end
+                
+                Logger.warn("HTTP request failure: #{reason}")
                 
                 send(consumer, { self, :status, Dict.get(request_map, :status, 500) })
                 send(consumer, { self, :meta, %{error: reason} })
@@ -661,8 +669,8 @@ defmodule CrocodilePear do
   @spec get_hackney_chunk(reference, pid) :: :ok
   defp get_hackney_chunk(id, consumer) do
     receive do
-      {:hackney_response, ^id, {:error, reason}} -> 
-        IO.inspect(reason) #TODO
+      {:hackney_response, ^id, {:error, reason}} ->
+        throw reason
 
       {:hackney_response, ^id, :done} ->
         send(consumer, { self, :done })
