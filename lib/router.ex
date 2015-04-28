@@ -1,6 +1,6 @@
 defmodule Router do
   use Plug.Router
-  import CrocodilePear
+  import Rackla
 
   plug :match
   plug :dispatch
@@ -30,7 +30,7 @@ defmodule Router do
   get "/proxy/set-headers" do
     conn.query_string
     |> request
-    |> response(conn, [headers: %{"CrocodilePear" => "CrocodileTear"}])
+    |> response(conn, [headers: %{"Rackla" => "CrocodilePear"}])
   end
 
   get "/proxy/concat-json" do

@@ -2,7 +2,7 @@ defmodule RouterTest do
   use ExUnit.Case, async: true
   use Plug.Test
 
-  import CrocodilePear
+  import Rackla
 
   @opts Router.init([])
 
@@ -35,7 +35,7 @@ defmodule RouterTest do
     assert conn.port == 80
     assert conn.scheme == :http
     assert conn.method == "GET"
-    assert get_resp_header(conn, "CrocodilePear") == ["CrocodileTear"]
+    assert get_resp_header(conn, "Rackla") == ["CrocodilePear"]
 
     json_response = Poison.decode!(conn.resp_body)
     assert json_response["empty"] == false

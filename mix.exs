@@ -1,15 +1,15 @@
-defmodule CrocodilePear.Mixfile do
+defmodule Rackla.Mixfile do
   use Mix.Project
 
   def project do
     [
-      app: :crocodile_pear,
+      app: :rackla,
       version: "0.0.1",
       elixir: "~> 1.0",
       deps: deps,
       escript: escript,
       package: package,
-      description: "CrocodilePear is library used for building API-gateways."
+      description: "Rackla is library used for building API-gateways."
     ]
   end
 
@@ -17,7 +17,7 @@ defmodule CrocodilePear.Mixfile do
   def application do
     [
       applications: [:logger, :cowboy, :plug, :hackney],
-      mod: {CrocodilePear.Application, []}
+      mod: {Rackla.Application, []}
     ]
   end
 
@@ -36,9 +36,9 @@ defmodule CrocodilePear.Mixfile do
     [
       contributors: ["Anton Fagerberg"],
       licenses: ["MIT"],
-      links: %{"GitHub" => "https://github.com/AntonFagerberg/crocodile_pear"},
+      links: %{"GitHub" => "https://github.com/AntonFagerberg/rackla"},
       files: [
-        "lib/crocodile_pear/crocodile_pear.ex",
+        "lib/rackla/rackla.ex",
         "mix.ex",
         "README.md",
         "LICENSE"
@@ -47,6 +47,6 @@ defmodule CrocodilePear.Mixfile do
   end
   
   def escript do
-    [main_module: CrocodilePear.Application]
+    [main_module: Rackla.Application]
   end
 end

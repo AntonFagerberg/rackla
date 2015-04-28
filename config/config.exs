@@ -1,4 +1,4 @@
 use Mix.Config
 
-config :crocodile_pear,
+config :rackla,
   port: System.get_env("PORT") || 4000

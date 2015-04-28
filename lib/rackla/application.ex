@@ -1,4 +1,4 @@
-defmodule CrocodilePear.Application do
+defmodule Rackla.Application do
   use Application
   
   def main(_args) do
@@ -12,12 +12,12 @@ defmodule CrocodilePear.Application do
     
     children = [
       # Define workers and child supervisors to be supervised
-      worker(CrocodilePear.RouterGenServer, [])
+      worker(Rackla.RouterGenServer, [])
     ]
     
     # See http://elixir-lang.org/docs/stable/elixir/Supervisor.html
     # for other strategies and supported options
-    opts = [strategy: :one_for_one, name: CrocodilePear.Supervisor]
+    opts = [strategy: :one_for_one, name: Rackla.Supervisor]
     Supervisor.start_link(children, opts)
   end
 end

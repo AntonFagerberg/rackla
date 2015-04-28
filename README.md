@@ -1,29 +1,25 @@
-CrocodilePear
+Rackla
 =============
 
-CrocodilePear is library primarily used for building API-gateways. When we say API-gateway, we mean to proxy and potentially enhance the communication between servers and HTTP clients such as browsers by transforming the data. The communication can be enhanced by throwing away unnecessary data, concatenate requests or convert the data between different formats. 
+Rackla is library primarily used for building API-gateways. When we say API-gateway, we mean to proxy and potentially enhance the communication between servers and HTTP clients such as browsers by transforming the data. The communication can be enhanced by throwing away unnecessary data, concatenate requests or convert the data between different formats. 
 
-With CrocodilePear you can execute multiple HTTP-requests and transform them in any way you want---asynchronous end to end. The protocol used inside CrocodilePear is based on a list of Elixir processes which follows a defined communication protocol. By piping functions together and forming a pipeline, these processes can communicate independently (asynchronously) of each other to achieve good performance. 
+With Rackla you can execute multiple HTTP-requests and transform them in any way you want---asynchronous end to end. The protocol used inside Rackla is based on a list of Elixir processes which follows a defined communication protocol. By piping functions together and forming a pipeline, these processes can communicate independently (asynchronously) of each other to achieve good performance. 
 
 The protocol used between the Elixir process is by default abstracted away. By utilizing helper functions instead, the developer can gain the performance benefit without having to deal with any message passing. There is however nothing stopping the developers who want to tap directly in to the process messaging.
 
-CrocodilePear utilizes [Plug](https://github.com/elixir-lang/plug) to communicate with the clients over HTTP. Internally, it uses [Hackney](https://github.com/benoitc/hackney) to make HTTP requests and [Poison](https://github.com/devinus/poison) for dealing with JSON.
+Rackla utilizes [Plug](https://github.com/elixir-lang/plug) to communicate with the clients over HTTP. Internally, it uses [Hackney](https://github.com/benoitc/hackney) to make HTTP requests and [Poison](https://github.com/devinus/poison) for dealing with JSON.
 
 ## Minimal installation (as Mix dependency)
 
-You can add CrocodilePear to your existing application by adding the following Mix dependency:
+You can add Rackla to your existing application by adding the following Mix dependency:
 
 ```elixir
 defp deps do
   [
-    #{:plug, "~> 0.10"},  # Optional for creating end-points
-    #{:cowboy, "~> 1.0"}, # Required if using Plug
-    {:crocodile_pear, "~> 1.0"} # TODO Fix correct
+    {:rackla, "~> 1.0"} # TODO Fix correct
   ]
 end
 ```
-
-You also have to include Plug yourself in order to create end-points which are used together with CrocodilePear as in the examples below.
 
 This setup is more complicated and it is recommended that you do a "full installation", described below, for your projects.
 
@@ -34,10 +30,10 @@ You can clone this GitHub repository in order to get a complete working setup wi
 ### Starting the application
 The application will be started automatically when running `iex -S mix`. You can also start it by running `mix server`. By default, it will start on port 4000, this can be changed either from the file `config/config.exs` or by creating a environment variable named PORT.
 
-You can also create an escript with `mix escript.build` and then run the file `crocodile_pear`.
+You can also create an escript with `mix escript.build` and then run the file `rackla`.
 
 ### Deploy to Heroku
-The [Heroku Buildpack for Elixir](https://github.com/HashNuke/heroku-buildpack-elixir) works out of the box for CrocodilePear.
+The [Heroku Buildpack for Elixir](https://github.com/HashNuke/heroku-buildpack-elixir) works out of the box for Rackla.
 
 ## Tutorial (with Plug)
 
@@ -132,7 +128,7 @@ Note that the `request` function accepts any of the following data-types as its 
 * List of maps (multiple requests)
 
 ### Timers
-Timers can be used anywhere in the pipeline to log timestamps. The timers can be used between both synchronous and asynchronous functions to determine what happens on which moments in time. On synchronous functions, the log event will be called after the function call has completed---on asynchronous calls which follows the protocol defined by CrocodilePear, a log event will be triggered on every message between the Elixir processes.
+Timers can be used anywhere in the pipeline to log timestamps. The timers can be used between both synchronous and asynchronous functions to determine what happens on which moments in time. On synchronous functions, the log event will be called after the function call has completed---on asynchronous calls which follows the protocol defined by Rackla, a log event will be triggered on every message between the Elixir processes.
 
 ```elixir
 "https://api.instagram.com/v1/users/self/feed?count=50&access_token=" <> conn.query_string
@@ -189,13 +185,13 @@ transform(fn(resp) -> Dict.update!(resp, :body, &:zlib.gunzip/1) end)
 ```
 
 ### Working with JSON
-CrocodilePear uses [Poison](https://github.com/devinus/poison) for working with JSON internally. It is a great library which converts JSON-structures to Elixir-structures and vice versa. Poison can of course also be used in the end-points for transforming and manipulating JSON data in the pipeline.
+Rackla uses [Poison](https://github.com/devinus/poison) for working with JSON internally. It is a great library which converts JSON-structures to Elixir-structures and vice versa. Poison can of course also be used in the end-points for transforming and manipulating JSON data in the pipeline.
 
 ### Working with XML (and other formats)
 There is currently no special XML support (or any other format except JSON). You can request data in any format over HTTP, process it with any third-party library and respond with it---but there are no built in helper functions such as the `concatenate_json` used for JSON.
 
 ### Caching
-CrocodilePear has no built in support for caching but you can, for example, use [EchoTeams Erlang memcached client library](https://github.com/EchoTeam/mcd) which we've successfully experimented with.
+Rackla has no built in support for caching but you can, for example, use [EchoTeams Erlang memcached client library](https://github.com/EchoTeam/mcd) which we've successfully experimented with.
 
 ### Cross-Origin Resource Sharing (CORS) 
 In order to use CORS in your API gateway, you can use any tool which works with Plug such as [cors_plug](https://github.com/mschae/cors_plug).

@@ -1,4 +1,4 @@
-defmodule CrocodilePear.RouterGenServer do
+defmodule Rackla.RouterGenServer do
   use GenServer
   
   def start_link() do
@@ -6,7 +6,7 @@ defmodule CrocodilePear.RouterGenServer do
   end
   
   def init(_args) do
-    port = Application.get_env(:crocodile_pear, :port, 4000)
+    port = Application.get_env(:rackla, :port, 4000)
     if is_binary(port), do: port = String.to_integer(port)
     
     Plug.Adapters.Cowboy.http(Router, [], port: port)

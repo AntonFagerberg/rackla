@@ -1,12 +1,12 @@
-defmodule CrocodilePear do
+defmodule Rackla do
   @moduledoc """
-  CrocodilePear is library primarily used for building API-gateways. When we say API-gateway, we mean to proxy and potentially enhance the communication between servers and HTTP clients such as browsers by transforming the data. The communication can be enhanced by throwing away unnecessary data, concatenate requests or convert the data between different formats. 
+  Rackla is library primarily used for building API-gateways. When we say API-gateway, we mean to proxy and potentially enhance the communication between servers and HTTP clients such as browsers by transforming the data. The communication can be enhanced by throwing away unnecessary data, concatenate requests or convert the data between different formats. 
 
-  With CrocodilePear you can execute multiple HTTP-requests and transform them in any way you want---asynchronous end to end. The protocol used inside CrocodilePear is based on a list of Elixir processes which follows a defined communication protocol. By piping functions together and forming a pipeline, these processes can communicate independently (asynchronously) of each other to achieve good performance. 
+  With Rackla you can execute multiple HTTP-requests and transform them in any way you want---asynchronous end to end. The protocol used inside Rackla is based on a list of Elixir processes which follows a defined communication protocol. By piping functions together and forming a pipeline, these processes can communicate independently (asynchronously) of each other to achieve good performance. 
 
   The protocol used between the Elixir process is by default abstracted away. By utilizing helper functions instead, the developer can gain the performance benefit without having to deal with any message passing. There is however nothing stopping the developers who want to tap directly in to the process messaging.
 
-  CrocodilePear utilizes [Plug](https://github.com/elixir-lang/plug) to communicate with the clients over HTTP. Internally, it uses [Hackney](https://github.com/benoitc/hackney) to make HTTP requests and [Poison](https://github.com/devinus/poison) for dealing with JSON.
+  Rackla utilizes [Plug](https://github.com/elixir-lang/plug) to communicate with the clients over HTTP. Internally, it uses [Hackney](https://github.com/benoitc/hackney) to make HTTP requests and [Poison](https://github.com/devinus/poison) for dealing with JSON.
   
   ## Examples (with Plug)
 
@@ -91,7 +91,7 @@ defmodule CrocodilePear do
   * List of maps (multiple requests)
 
   ### Timers
-  Timers can be used anywhere in the pipeline to log timestamps. The timers can be used between both synchronous and asynchronous functions to determine what happens on which moments in time. On synchronous functions, the log event will be called after the function call has completed---on asynchronous calls which follows the protocol defined by CrocodilePear, a log event will be triggered on every message between the Elixir processes.
+  Timers can be used anywhere in the pipeline to log timestamps. The timers can be used between both synchronous and asynchronous functions to determine what happens on which moments in time. On synchronous functions, the log event will be called after the function call has completed---on asynchronous calls which follows the protocol defined by Rackla, a log event will be triggered on every message between the Elixir processes.
 
       "https://api.instagram.com/v1/users/self/feed?count=50&access_token=" <> conn.query_string
       |> timer("Got URL")
@@ -138,7 +138,7 @@ defmodule CrocodilePear do
       transform(fn(resp) -> Dict.update!(resp, :body, &:zlib.gunzip/1) end)
 
   ### Working with JSON
-  CrocodilePear uses [Poison](https://github.com/devinus/poison) for working with JSON internally. It is a great library which converts JSON-structures to Elixir-structures and vice versa. Poison can of course also be used in the end-points for transforming and manipulating JSON data in the pipeline.
+  Rackla uses [Poison](https://github.com/devinus/poison) for working with JSON internally. It is a great library which converts JSON-structures to Elixir-structures and vice versa. Poison can of course also be used in the end-points for transforming and manipulating JSON data in the pipeline.
 
   ### Working with XML (and other formats)
   There is currently no special XML support (or any other format except JSON). You can request data in any format over HTTP, process it with any third-party library and respond with it---but there are no built in helper functions such as the `concatenate_json` used for JSON.
@@ -267,7 +267,7 @@ defmodule CrocodilePear do
   
   Args:
     * `producers` - List of producers (Elixir PIDs which follows the protocol
-    defined by CrocodilePear).
+    defined by Rackla).
     * `conn` - Plug´s `conn` structure.
     * `options` - Options (see below). Default: %{}.
     
@@ -353,7 +353,7 @@ defmodule CrocodilePear do
   
   Args:
     * `producers` - List of producers (Elixir PIDs which follows the protocol
-    defined by CrocodilePear).
+    defined by Rackla).
     * `options` - Options (see below). Default: [].
     
   Options:
@@ -445,7 +445,7 @@ defmodule CrocodilePear do
   
   Args:
     * `producers` - List of producers (Elixir PIDs which follows the protocol
-    defined by CrocodilePear).
+    defined by Rackla).
   """
   @spec collect_response(producers) :: [response] | response
   
@@ -467,7 +467,7 @@ defmodule CrocodilePear do
   
   Args:
     * `producers` - List of producers (Elixir PIDs which follows the protocol
-    defined by CrocodilePear).
+    defined by Rackla).
     * `fun` - Lambda function or list of lambda functions. If the argument is
     one function, it will be applied to all messages---if the argument is a
     list of functions, one function will be applied to one response by zipping

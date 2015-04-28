@@ -1,8 +1,8 @@
-defmodule CrocodilePear.Tests do
+defmodule Rackla.Tests do
   use ExUnit.Case, async: true
   use Plug.Test
 
-  import CrocodilePear
+  import Rackla
 
   test "request process" do
     producers = request("http://validate.jsontest.com/?json={%22key%22:%22value%22}")
