@@ -1,0 +1,5 @@
+title: Rackla - The Open Source API Gateway Framework
+markdown: redcarpet
+kramdown:
+  input: GFM
+highlighter: pygments

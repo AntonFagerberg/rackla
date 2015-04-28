@@ -1,4 +1,2 @@
-/_build
-/deps
-erl_crash.dump
-*.ez
+_site
+.sass-cache
