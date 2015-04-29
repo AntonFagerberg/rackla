@@ -73,4 +73,20 @@ defmodule Rackla.Tests do
       assert is_bitstring(body)
     end)
   end
+  
+  test "invalid URL meta error" do
+    response = 
+      "invalid-url"
+      |> request
+      |> collect_response
+      |> Enum.at(0)
+      
+    assert Dict.has_key?(response, :meta)
+    
+    meta_map = Dict.get(response, :meta)
+
+    assert is_map(meta_map)
+    assert Dict.has_key?(meta_map, :error)
+    assert Dict.get(meta_map, :error) == :nxdomain
+  end
 end
