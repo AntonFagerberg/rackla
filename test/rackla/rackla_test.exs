@@ -46,10 +46,11 @@ defmodule Rackla.Tests do
     map = collect_response(producer)
     assert is_map(map)
 
-    %{status: status, headers: headers, body: body} = map
+    %{status: status, headers: headers, body: body, meta: meta} = map
     assert is_integer(status)
     assert is_map(headers)
     assert is_bitstring(body)
+    assert is_map(meta)
   end
 
   test "collect response to map on multiple URIs" do
@@ -67,10 +68,11 @@ defmodule Rackla.Tests do
       map = collect_response(producer)
       assert is_map(map)
 
-      %{status: status, headers: headers, body: body} = map
+      %{status: status, headers: headers, body: body, meta: meta} = map
       assert is_integer(status)
       assert is_map(headers)
       assert is_bitstring(body)
+      assert is_map(meta)
     end)
   end
   
