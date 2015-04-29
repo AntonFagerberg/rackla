@@ -214,6 +214,9 @@ Rackla has no built in support for caching but you can, for example, use [EchoTe
 ### Cross-Origin Resource Sharing (CORS) 
 In order to use CORS in your API gateway, you can use any tool which works with Plug such as [cors_plug](https://github.com/mschae/cors_plug).
 
+## Learn more
+For more information, you can see some test end-points defined in [lib/router.ex](https://github.com/AntonFagerberg/rackla/blob/master/lib/router.ex). The file [lib/rackla/rackla.ex](https://github.com/AntonFagerberg/rackla/blob/master/lib/rackla/rackla.ex)  contains documentation for all functions - the documentation is also available online (TODO!).
+
 ## The MIT License (MIT)
 
 Copyright (c) 2015 Anton Fagerberg
