@@ -83,6 +83,7 @@ defmodule Rackla.Tests do
       |> collect_response
       |> Enum.at(0)
       
+    assert Dict.get(response, :status) == 500
     assert Dict.has_key?(response, :meta)
     
     meta_map = Dict.get(response, :meta)
