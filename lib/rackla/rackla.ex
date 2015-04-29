@@ -258,11 +258,11 @@ defmodule Rackla do
                 get_hackney_chunk(id, consumer)
                 
               {:error, reason} ->
+                Logger.warn("HTTP request failure: #{inspect(reason)}")
+                
                 consumer = receive do
                   { pid, :ready } -> pid
                 end
-                
-                Logger.warn("HTTP request failure: #{inspect(reason)}")
                 
                 send(consumer, { self, :status, Dict.get(request_map, :status, 500) })
                 send(consumer, { self, :meta, %{error: reason} })
