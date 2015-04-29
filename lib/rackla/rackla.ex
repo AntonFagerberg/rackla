@@ -103,7 +103,22 @@ defmodule Rackla do
 
   Using multiple pipelines in this fashion will process all requests asynchronously and respond in the same manner.
 
-  In the same way, you can create recursive pipelines. The easiest way to do this is to start a new pipeline inside the lambda function used in the `transform` function. Just remember that the lambda-function used in `transform` must return a map so it is a good idea to use `collect_response` here to convert the internal pipeline to a map. Since the `transform`-function is executed asynchronously, the outer pipeline will not be affected when using `collect_response` in a pipeline inside a `transform` function.
+  In the same way, you can create recursive pipelines. This is a good idea in cases where you want to extend a response with data from another request. The easiest way to do this is to start a new pipeline inside the lambda function used in the `transform` function. Just remember that the lambda-function used in `transform` must return a map so it is a good idea to use `collect_response` here to convert the internal pipeline to a map. Since the `transform` function is executed asynchronously, the outer pipeline will not be affected when using `collect_response` in a pipeline inside a `transform` function.
+
+      get "/recursive/pipeline" do
+        some_function = fn(response) ->
+          urls_from_respone = get_some_things(response)
+          
+          urls_from_response
+          |> request
+          |> collect_response
+        end
+        
+        url_list
+        |> request
+        |> transform(some_function)
+        |> response(conn)
+      end
 
   ### Advanced requests
   The function `request` can either take strings (URLs) which will then be automatically transformed to a GET-request - or you can specify a map with more advanced details. The request-map reads the following keys: `:url`, `:method` which defaults to `:get`, `:body` (request payload) which defaults to the empty string and `:headers` which defaults to an empty map. You can also enter any data you want into the `:meta` map by specifying it in the `request`-map.
