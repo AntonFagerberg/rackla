@@ -529,7 +529,7 @@ defmodule Rackla do
         Task.start_link(fn ->
           json =
             if (Dict.get(options, :body_only, false)) do
-              %Rackla.Response{body: body} = r = collect_response(producer)
+              %Rackla.Response{body: body} = collect_response(producer)
 
               case Poison.decode(body) do
                 {:ok, body_decoded} -> 
