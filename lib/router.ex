@@ -140,13 +140,28 @@ defmodule Router do
   
   # Access-token from the Instagram API is required to use this end-point.
   get "/instagram" do
-    import  Logger
+    require Logger
     
     binary_to_img = fn(item) ->
       Map.update!(item, :body, fn(body) ->
         "<img src=\"data:image/jpeg;base64,#{Base.encode64(body)}\" height=\"150px\" width=\"150px\">"
       end)
     end
+    
+    chunk_status = 
+      conn
+        |> send_chunked(200)
+        |> chunk("<!doctype html><html lang=\"en\"><head></head><body>")
+
+    conn =  
+      case chunk_status do
+        {:ok, new_conn} -> 
+          new_conn
+
+        {:error, reason} ->
+          Logger.error("Unable to chunk response: #{reason}")
+          conn
+      end
       
     conn =
       "https://api.instagram.com/v1/users/self/feed?count=50&access_token=" <> conn.query_string
