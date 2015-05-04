@@ -2,8 +2,6 @@ defmodule RouterTest do
   use ExUnit.Case, async: true
   use Plug.Test
 
-  import Rackla
-
   @opts Router.init([])
 
   test "proxy request response" do
@@ -282,35 +280,5 @@ defmodule RouterTest do
       assert get_resp_header(conn_uncompressed, "content-encoding") == []
       
       assert conn_uncompressed.resp_body == :zlib.gunzip(conn_compressed.resp_body)
-  end
-  
-  test "proxy request with invalid url" do
-    conn =
-      conn(:get, "/proxy/?http://test")
-      |> Router.call(@opts)
-
-    assert conn.state == :chunked
-    assert conn.status == 500
-    assert conn.port == 80
-    assert conn.scheme == :http
-    assert conn.method == "GET"
-  end
-  
-  test "invalid request" do
-    producers = request("http://test")
-    assert is_list(producers)
-    assert length(producers) == 1
-
-    Enum.each(producers, fn(producer) ->
-      send(producer, { self, :ready })
-
-      assert_receive { ^producer, :headers, _headers }, 1_000
-      assert_receive { ^producer, :status, _status }, 1_000
-      assert_receive { ^producer, :meta, meta }, 1_000
-      assert_receive { ^producer, :chunk, _chunks }, 1_000
-      assert_receive { ^producer, :done }, 1_000
-      
-      assert meta == %{error: :nxdomain}
-    end)
   end
 end
