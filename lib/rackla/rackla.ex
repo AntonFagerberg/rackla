@@ -210,7 +210,10 @@ defmodule Rackla do
   Options:
     * `:insecure` - Boolean whether to perform SSL connections without checking
     the certificate. Default: false.
-    * `:connect_timeout` - Timeout for request in milliseconds. Default: 5_000.
+    * `:connect_timeout` - Timeout used when estabilishing a connection, in 
+    milliseconds. Default: 5_000.
+    * `:receive_timeout` - Timeout used when receiving a connection, in 
+    milliseconds. Default: 5_000.
     
   Keys which can be used in the request map:
     * `:url` - Request URL to call.
@@ -238,11 +241,11 @@ defmodule Rackla do
               Dict.get(request_map, :headers, []) |> Enum.into([]),
               Dict.get(request_map, :body, ""),
               [
-                {:connect_timeout, Dict.get(options, :connect_timeout, 5_000)},
-                {:recv_timeout, :infinity},
-                :async,
-                {:stream_to, self},
-                {:insecure, Dict.get(options, :insecure, false)}
+                insecure: Dict.get(options, :insecure, false),
+                connect_timeout: Dict.get(options, :connect_timeout, 5_000),
+                recv_timeout: Dict.get(options, :receive_timeout, 5_000),
+                async: true,
+                stream_to: self
               ]
             ) do
               {:ok, id} ->
