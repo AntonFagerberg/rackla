@@ -43,14 +43,15 @@ defmodule Rackla.Tests do
   test "collect response to map" do
     [producer | _] = request("http://validate.jsontest.com/?json={%22key%22:%22value%22}")
 
-    map = collect_response(producer)
-    assert is_map(map)
+    response = collect_response(producer)
+    assert is_map(response)
 
-    %{status: status, headers: headers, body: body, meta: meta} = map
+    %Rackla.Response{status: status, headers: headers, body: body, meta: meta, error: error} = response
     assert is_integer(status)
     assert is_map(headers)
     assert is_bitstring(body)
     assert is_map(meta)
+    assert error == nil
   end
 
   test "collect response to map on multiple URIs" do
@@ -65,14 +66,15 @@ defmodule Rackla.Tests do
     assert length(producers) == length(uris)
 
     Enum.each(producers, fn(producer) ->
-      map = collect_response(producer)
-      assert is_map(map)
+      response = collect_response(producer)
+      assert is_map(response)
 
-      %{status: status, headers: headers, body: body, meta: meta} = map
+      %Rackla.Response{status: status, headers: headers, body: body, meta: meta, error: error} = response
       assert is_integer(status)
       assert is_map(headers)
       assert is_bitstring(body)
       assert is_map(meta)
+      assert error == nil
     end)
   end
   
@@ -84,5 +86,16 @@ defmodule Rackla.Tests do
       |> Enum.at(0)
       
     assert response.error == :nxdomain
+  end
+  
+  test "invalid transform" do
+    [response] = 
+      "http://validate.jsontest.com/?json={%22key%22:%22value%22}"
+      |> request
+      |> transform(fn(response) -> Dict.get!(:invalid, response) end)
+      |> collect_response
+      
+    assert response.error == %UndefinedFunctionError{arity: 2, function: :get!, module: Dict,
+   self: false}
   end
 end

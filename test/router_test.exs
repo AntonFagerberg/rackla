@@ -242,7 +242,7 @@ defmodule RouterTest do
 
   test "transform json concatenated requests" do
     conn =
-      conn(:get, "/temperature/?malmo,se|halmstad,se|copenhagen,dk|san francisco,us|stockholm,se")
+      conn(:get, "/temperature/?malmo,se|halmstad,se|san francisco,us|stockholm,se")
       |> Router.call(@opts)
 
     assert conn.state == :chunked
@@ -253,10 +253,9 @@ defmodule RouterTest do
 
     response = Poison.decode!(conn.resp_body)
 
-    assert length(response) == 5
+    assert length(response) == 4
     assert Enum.any?(response, &(Map.keys(&1) == ["Malmo"]))
     assert Enum.any?(response, &(Map.keys(&1) == ["Halmstad"]))
-    assert Enum.any?(response, &(Map.keys(&1) == ["Copenhagen"]))
     assert Enum.any?(response, &(Map.keys(&1) == ["San Francisco"]))
     assert Enum.any?(response, &(Map.keys(&1) == ["Stockholm"]))
   end

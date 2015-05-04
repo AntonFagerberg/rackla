@@ -1,5 +1,6 @@
 defmodule Router do
   use Plug.Router
+  use Plug.ErrorHandler
   import Rackla
 
   plug :match
@@ -39,6 +40,18 @@ defmodule Router do
     |> concatenate_json
     |> response(conn)
   end
+  
+  get "/proxy/invalid-transform" do
+    invalid_transform = fn(response) ->
+      Dict.get!(response, :nope)
+    end
+    
+    conn.query_string
+    |> request
+    |> transform(invalid_transform)
+    |> concatenate_json
+    |> response(conn)
+  end
 
   get "/proxy/multi/concat-json" do
     String.split(conn.query_string, "|")
@@ -57,10 +70,10 @@ defmodule Router do
   get "/proxy/transform/blanker" do
     blanker = fn(response) ->
       response
-      |> Dict.update!(:status, fn(_) -> 404 end)
-      |> Dict.update!(:headers, fn(_) -> %{} end)
-      |> Dict.update!(:body, fn(_) -> "" end)
-      |> Dict.update!(:meta, fn(_) -> %{} end)
+      |> Map.update!(:status, fn(_) -> 404 end)
+      |> Map.update!(:headers, fn(_) -> %{} end)
+      |> Map.update!(:body, fn(_) -> "" end)
+      |> Map.update!(:meta, fn(_) -> %{} end)
     end
 
     request(conn.query_string)
@@ -71,10 +84,10 @@ defmodule Router do
   get "/proxy/transform/identity" do
     identity = fn(response) ->
       response
-      |> Dict.update!(:status, fn(x) -> x end)
-      |> Dict.update!(:headers, fn(x) -> x end)
-      |> Dict.update!(:body, fn(x) -> x end)
-      |> Dict.update!(:meta, fn(x) -> x end)
+      |> Map.update!(:status, fn(x) -> x end)
+      |> Map.update!(:headers, fn(x) -> x end)
+      |> Map.update!(:body, fn(x) -> x end)
+      |> Map.update!(:meta, fn(x) -> x end)
     end
 
     request(conn.query_string)
@@ -85,10 +98,10 @@ defmodule Router do
   get "/proxy/transform/multi" do
     func_creator = fn(key) ->
       fn(response) ->
-        Dict.update!(response, :body, fn(body) ->
+        Map.update!(response, :body, fn(body) ->
           body 
           |> Poison.decode! 
-          |> Dict.has_key?(key) 
+          |> Map.has_key?(key) 
           |> to_string 
         end)
       end
@@ -110,7 +123,7 @@ defmodule Router do
       |> Enum.map(&("http://api.openweathermap.org/data/2.5/weather?q=#{&1}"))
 
     temperature_extractor = fn(item) ->
-      Dict.update!(item, :body, fn(body) ->
+      Map.update!(item, :body, fn(body) ->
         response_body = Poison.decode!(body)
 
         Map.put(%{}, response_body["name"], response_body["main"]["temp"])
@@ -127,27 +140,13 @@ defmodule Router do
   
   # Access-token from the Instagram API is required to use this end-point.
   get "/instagram" do
-    require Logger
+    import  Logger
     
     binary_to_img = fn(item) ->
-      Dict.update!(item, :body, fn(body) ->
+      Map.update!(item, :body, fn(body) ->
         "<img src=\"data:image/jpeg;base64,#{Base.encode64(body)}\" height=\"150px\" width=\"150px\">"
       end)
     end
-    
-    chunk_status = 
-      conn
-      |> send_chunked(200)
-      |> chunk("<!doctype html><html lang=\"en\"><head></head><body>")
-    
-    conn =  
-      case chunk_status do
-        {:ok, new_conn} -> new_conn
-
-        {:error, reason} ->
-          Logger.error("Unable to chunk response: #{reason}")
-          conn
-      end
       
     conn =
       "https://api.instagram.com/v1/users/self/feed?count=50&access_token=" <> conn.query_string
@@ -156,11 +155,11 @@ defmodule Router do
       |> timer("Executed request")
       |> collect_response |> Enum.at(0)
       |> timer("Collected response")
-      |> Dict.get(:body)
+      |> Map.get(:body)
       |> timer("Got body")
       |> Poison.decode!
       |> timer("Decoded JSON")
-      |> Dict.get("data")
+      |> Map.get("data")
       |> timer("Extracted data")
       |> Enum.map(&(&1["images"]["standard_resolution"]["url"]))
       |> timer("Mapped image url")
