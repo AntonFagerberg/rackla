@@ -76,20 +76,13 @@ defmodule Rackla.Tests do
     end)
   end
   
-  test "invalid URL meta error" do
+  test "invalid URL" do
     response = 
       "invalid-url"
       |> request
       |> collect_response
       |> Enum.at(0)
       
-    assert Dict.get(response, :status) == 500
-    assert Dict.has_key?(response, :meta)
-    
-    meta_map = Dict.get(response, :meta)
-
-    assert is_map(meta_map)
-    assert Dict.has_key?(meta_map, :error)
-    assert Dict.get(meta_map, :error) == :nxdomain
+    assert response.error == :nxdomain
   end
 end
