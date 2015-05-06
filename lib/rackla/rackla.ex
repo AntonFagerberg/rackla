@@ -56,7 +56,7 @@ defmodule Rackla do
       get "/proxy" do
         conn.query_string
         |> request
-        |> response(conn)
+        |> response
       end
 
   ### Multiple requests
@@ -65,7 +65,7 @@ defmodule Rackla do
       get "/proxy/multi" do
         String.split(conn.query_string, "|")
         |> request
-        |> response(conn)
+        |> response
       end
 
   In this example, all requests are executed asynchronously - the first responding request will be sent first to the client. The response is therefore nondeterministic and the response body is just each individual response's payload concatenated to in to one. This is in most cases useless so let's continue and see what we can do to improve that.
@@ -77,7 +77,7 @@ defmodule Rackla do
         String.split(conn.query_string, "|")
         |> request
         |> concatenate_json
-        |> response(conn)
+        |> response
       end
       
   The order in the JSON list is guaranteed to follow the same as the order in as the list of producers.
@@ -102,7 +102,7 @@ defmodule Rackla do
 
         request(conn.query_string)
         |> transform(identity)
-        |> response(conn)
+        |> response
       end
 
   The transform function works on a "per response" basis.
@@ -119,7 +119,7 @@ defmodule Rackla do
         
         pipeline_1 ++ pipeline_2
         |> concatenate_json
-        |> response(conn)
+        |> response
       end
 
   Using multiple pipelines in this fashion will process all requests asynchronously and respond in the same manner.
@@ -138,7 +138,7 @@ defmodule Rackla do
         url_list
         |> request
         |> transform(some_function)
-        |> response(conn)
+        |> response
       end
 
   ### Advanced requests
@@ -174,7 +174,7 @@ defmodule Rackla do
       |> timer("Executed request")
       |> transform(binary_to_img)
       |> timer("Added transform function")
-      |> response(conn)
+      |> response
       |> timer("Responded to query")
 
   This will output information to `Logger.info`, example:
@@ -193,7 +193,7 @@ defmodule Rackla do
   ### Compression
   The response can be compressed by utilizing GZip. To enable compression, set `:compress` to `true` in the keyword-list argument in the `response` function.
 
-      response(conn, compress: true)
+      response(compress: true)
 
   ### Decompression
   When executing requests to a server which replies with compressed data, you have to decompress it yourself before processing it (unless you want to send it directly to the client). If the server uses GZip-compression, then you can use the Zlib module in Erlang to decompress the body, for example by creating a `transform` lambda-function:
@@ -244,7 +244,7 @@ defmodule Rackla do
         |> request
         |> transform(invalid_transform)
         |> concatenate_json
-        |> response(conn)
+        |> response
       end
 
   Here we have defined an end-point which will proxy a URL and concatenate the response as JSON. We have defined a lambda function `invalid_transform` which will try to get the non-existing key `:nope`. This exception will be caught by Rackla and it will be propagated down to the client:
@@ -405,9 +405,36 @@ defmodule Rackla do
       producer
     end)
   end
-
+  
   @doc """
   `response` uses `conn` from Plug in order to transmit the responses from the 
+  producers to the client over HTTP. 
+  
+  `response` is a macro which works just like `response_conn`. The only 
+  difference between them is that `response` picks up `conn` implicitly from the
+  scope while `conn` has to be passed as a parameter to `response_conn`.
+  
+  If there is only one item in the `producers` list, that `producer`'s headers
+  and status code will be added to the response per default if not already sent.
+  
+  Args:
+    * `producers` - List of producers (Elixir PIDs which follows the protocol
+    defined by Rackla).
+    * `options` - (Optional) Options (see below).
+    
+  Options:
+    * `:compress` - boolean whether to gzip response or note. Default: false.
+    * `:headers` - response headers (map). Default: %{}.
+    * `:status` - HTTP response status code. Default: 200 (OK)
+  """
+  defmacro response(producers, options \\ []) do
+    quote do
+      response_conn(unquote(producers), var!(conn), unquote(options))
+    end
+  end
+
+  @doc """
+  `response_conn` uses `conn` from Plug in order to transmit the responses from the 
   producers to the client over HTTP.
   
   If there is only one item in the `producers` list, that `producer`'s headers
@@ -424,10 +451,10 @@ defmodule Rackla do
     * `:headers` - response headers (map). Default: %{}.
     * `:status` - HTTP response status code. Default: 200 (OK)
   """
-  @spec response(producers, Conn.t, Dict.t) :: Conn.t
-  def response(producers, conn, options \\ [])
+  @spec response_conn(producers, Conn.t, Dict.t) :: Conn.t
+  def response_conn(producers, conn, options \\ [])
 
-  def response([producer], conn, options) do
+  def response_conn([producer], conn, options) do
     if (Dict.get(options, :compress, false)) do
       response_compressed(producer, conn, options)
     else
@@ -484,7 +511,7 @@ defmodule Rackla do
     end
   end
 
-  def response(producers, conn, options) when is_list(producers) do
+  def response_conn(producers, conn, options) when is_list(producers) do
     if (Dict.get(options, :compress, false)) do
       response_compressed(producers, conn, options)
     else

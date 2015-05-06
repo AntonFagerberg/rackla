@@ -13,32 +13,32 @@ defmodule Router do
   get "/proxy" do
     conn.query_string
     |> request
-    |> response(conn)
+    |> response
   end
   
   get "/proxy/gzip" do
     conn.query_string
     |> request
-    |> response(conn, compress: true)
+    |> response(compress: true)
   end
 
   get "/proxy/multi" do
     String.split(conn.query_string, "|")
     |> request
-    |> response(conn)
+    |> response
   end
 
   get "/proxy/set-headers" do
     conn.query_string
     |> request
-    |> response(conn, [headers: %{"Rackla" => "CrocodilePear"}])
+    |> response(headers: %{"Rackla" => "CrocodilePear"})
   end
 
   get "/proxy/concat-json" do
     conn.query_string
     |> request
     |> concatenate_json
-    |> response(conn)
+    |> response
   end
   
   get "/proxy/invalid-transform" do
@@ -50,21 +50,21 @@ defmodule Router do
     |> request
     |> transform(invalid_transform)
     |> concatenate_json
-    |> response(conn)
+    |> response
   end
 
   get "/proxy/multi/concat-json" do
     String.split(conn.query_string, "|")
     |> request
     |> concatenate_json
-    |> response(conn)
+    |> response
   end
 
   get "/proxy/multi/concat-json/body-only" do
     String.split(conn.query_string, "|")
     |> request
     |> concatenate_json(body_only: true)
-    |> response(conn)
+    |> response
   end
 
   get "/proxy/transform/blanker" do
@@ -78,7 +78,7 @@ defmodule Router do
 
     request(conn.query_string)
     |> transform(blanker)
-    |> response(conn)
+    |> response
   end
 
   get "/proxy/transform/identity" do
@@ -92,7 +92,7 @@ defmodule Router do
 
     request(conn.query_string)
     |> transform(identity)
-    |> response(conn)
+    |> response
   end
 
   get "/proxy/transform/multi" do
@@ -114,7 +114,7 @@ defmodule Router do
 
     request(uris)
     |> transform(funcs)
-    |> response(conn)
+    |> response
   end
 
   get "/temperature" do
@@ -135,7 +135,7 @@ defmodule Router do
     |> request
     |> transform(temperature_extractor)
     |> concatenate_json(body_only: true)
-    |> response(conn)
+    |> response
   end
   
   # Access-token from the Instagram API is required to use this end-point.
@@ -182,7 +182,7 @@ defmodule Router do
       |> timer("Executed request")
       |> transform(binary_to_img)
       |> timer("Added transform function")
-      |> response(conn)
+      |> response
       |> timer("Responded to query")
       
     case chunk(conn, "</body></html>") do

@@ -60,7 +60,7 @@ A simple proxy can be created by exposing the endpoint `/proxy`. Here we get the
 get "/proxy" do
   conn.query_string
   |> request
-  |> response(conn)
+  |> response
 end
 ```
 
@@ -71,7 +71,7 @@ In the same manner as the previous example, we can use the query-string to retri
 get "/proxy/multi" do
   String.split(conn.query_string, "|")
   |> request
-  |> response(conn)
+  |> response
 end
 ```
 
@@ -86,7 +86,7 @@ get "/proxy/multi/concat-json" do
   String.split(conn.query_string, "|")
   |> request
   |> concatenate_json
-  |> response(conn)
+  |> response
 end
 ```
 
@@ -113,7 +113,7 @@ get "/proxy/transform/identity" do
 
   request(conn.query_string)
   |> transform(identity)
-  |> response(conn)
+  |> response
 end
 ```
 
@@ -132,7 +132,7 @@ get "/multi/pipeline" do
   
   pipeline_1 ++ pipeline_2
   |> concatenate_json
-  |> response(conn)
+  |> response
 end
 ```
 
@@ -153,7 +153,7 @@ get "/recursive/pipeline" do
   url_list
   |> request
   |> transform(some_function)
-  |> response(conn)
+  |> response
 end
 ```
 
@@ -191,7 +191,7 @@ Timers can be used anywhere in the pipeline to log timestamps. The timers can be
 |> timer("Executed request")
 |> transform(binary_to_img)
 |> timer("Added transform function")
-|> response(conn)
+|> response
 |> timer("Responded to query")
 ```
 
@@ -216,7 +216,7 @@ The message consists of (with the Logger information excluded):
 The response can be compressed by utilizing GZip. To enable compression, set `:compress` to `true` in the keyword-list argument in the `response` function.
 
 ```elixir
-response(conn, compress: true)
+response(compress: true)
 ```
 
 ### Decompression
@@ -271,7 +271,7 @@ get "/proxy/invalid-transform" do
   |> request
   |> transform(invalid_transform)
   |> concatenate_json
-  |> response(conn)
+  |> response
 end
 ```
 
