@@ -597,7 +597,9 @@ defmodule Rackla do
   @spec collect_response(producers) :: [Rackla.Response.t] | Rackla.Response.t
   
   def collect_response(producers) when is_list(producers) do
-    Enum.map(producers, &collect_response/1)
+    producers
+    |> Enum.map(&(Task.async(fn -> collect_response(&1) end)))
+    |> Enum.map(&Task.await/1)
   end
 
   def collect_response(producer) when is_pid(producer) do
