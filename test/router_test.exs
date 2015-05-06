@@ -254,10 +254,12 @@ defmodule RouterTest do
     response = Poison.decode!(conn.resp_body)
 
     assert length(response) == 4
-    assert Enum.any?(response, &(Map.keys(&1) == ["Malmo"]))
-    assert Enum.any?(response, &(Map.keys(&1) == ["Halmstad"]))
-    assert Enum.any?(response, &(Map.keys(&1) == ["San Francisco"]))
-    assert Enum.any?(response, &(Map.keys(&1) == ["Stockholm"]))
+    
+    [a, b, c, d] = response
+    assert Map.keys(a) == ["Malmo"]
+    assert Map.keys(b) == ["Halmstad"]
+    assert Map.keys(c) == ["San Francisco"]
+    assert Map.keys(d) == ["Stockholm"]
   end
   
   test "compressed response" do

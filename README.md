@@ -78,7 +78,8 @@ end
 In this example, all requests are executed asynchronously - the first responding request will be sent first to the client. The response is therefore nondeterministic and the response body is just each individual response's payload concatenated to in to one. This is in most cases useless so let's continue and see what we can do to improve that.
 
 ### Concatenate JSON
-The function `concatenate_json` is one approach to solve the problem from the previous example. When we get responses, especially out of order, we probably want to know which response belongs which request. Concatenate JSON will give us this and many more benefits. When piping to `concatenate_json`, all responses will be turned in to a JSON-list where each request has its own JSON-object containing the status-code, headers, body and a meta-field which developers can use to add additional information.
+The function `concatenate_json` is one approach to solve the problem from the previous example. When we get responses, especially out of order, we probably want to know which response belongs which request. Concatenate JSON will give us this and many more benefits. When piping to `concatenate_json`, all responses will be turned in to a JSON-list where each request has its own JSON-object containing the status-code, headers, body and a meta-field which developers can use to add additional information. 
+
 
 ```elixir
 get "/proxy/multi/concat-json" do
@@ -88,6 +89,8 @@ get "/proxy/multi/concat-json" do
   |> response(conn)
 end
 ```
+
+The order in the JSON list is guaranteed to follow the same as the order in as the list of producers.
 
 If you're only interested in the body (payload) of the response, you can pass `body_only: true` to the `concatenate_json` function which will then discard all other data. Every item in the JSON-list is then just the body from the response.
 

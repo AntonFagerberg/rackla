@@ -79,6 +79,8 @@ defmodule Rackla do
         |> concatenate_json
         |> response(conn)
       end
+      
+  The order in the JSON list is guaranteed to follow the same as the order in as the list of producers.
 
   If you're only interested in the body (payload) of the response, you can pass `body_only: true` to the `concatenate_json` function which will then discard all other data. Every item in the JSON-list is then just the body from the response.
 
@@ -510,6 +512,9 @@ defmodule Rackla do
   message (body) is formatted as a JSON list where each item corresponds to a
   response converted to a JSON map.
   
+  The order in the JSON list is guaranteed to follow the same as the order in 
+  as the list of producers.
+  
   Args:
     * `producers` - List of producers (Elixir PIDs which follows the protocol
     defined by Rackla).
@@ -523,40 +528,8 @@ defmodule Rackla do
   @spec concatenate_json(producers, Dict.t) :: [pid]
   def concatenate_json(producers, options \\ []) when is_list(producers) do
     {:ok, new_producer} = Task.start_link(fn ->
-      outer_self = self
-
-      Enum.each(producers, fn(producer) ->
-        Task.start_link(fn ->
-          json =
-            if (Dict.get(options, :body_only, false)) do
-              %Rackla.Response{body: body} = collect_response(producer)
-
-              case Poison.decode(body) do
-                {:ok, body_decoded} -> 
-                  Poison.encode!(body_decoded)
-
-                _not_json -> 
-                  Poison.encode!(body)
-              end
-            else
-              %Rackla.Response{body: body, error: error} = response = collect_response(producer)
-              
-              if (!is_nil(error)), do: Logger.warn("Discarding error in concatenate_json: #{inspect(error)}")
-
-              case Poison.decode(body) do
-                {:ok, body_decoded} ->
-                  Map.put(response, :body, body_decoded)
-                  |> Poison.encode!
-
-                _not_json -> 
-                  Poison.encode!(response)
-              end
-            end
-
-          send(outer_self, { :json, json })
-        end)
-      end)
-
+      producer_count = length(producers)
+      
       consumer = receive do
         { pid, :ready } -> pid
       end
@@ -564,35 +537,47 @@ defmodule Rackla do
       send(consumer, { self, :meta, %{} })
       send(consumer, { self, :status, 200 })
       send(consumer, { self, :headers, %{"Content-Type" => "application/json"} })
+      
+      producers
+      |> Enum.map(&(Task.async(fn -> collect_response(&1) end)))
+      |> Enum.with_index
+      |> Enum.each(fn({task, index}) ->
+        json =
+          if (Dict.get(options, :body_only, false)) do
+            %Rackla.Response{body: body} = Task.await(task)
 
-      if (Enum.empty?(producers)) do
-        send(consumer, { self, :chunk, "[]"})
-      else
-        [_head | rest] = producers
+            case Poison.decode(body) do
+              {:ok, body_decoded} -> 
+                Poison.encode!(body_decoded)
 
-        if (Enum.empty?(rest)) do
-          receive do
-            { :json, json } -> send(consumer, { self, :chunk, "[" <> json <> "]" })
-          end
-        else
-          receive do
-            { :json, json } -> send(consumer, { self, :chunk, "[" <> json })
-          end
-
-          [_head | count] = rest
-
-          Enum.each(count, fn(_) ->
-            receive do
-              { :json, json } -> send(consumer, { self, :chunk, "," <> json })
+              _not_json -> 
+                Poison.encode!(body)
             end
-          end)
+          else
+            %Rackla.Response{body: body, error: error} = response = Task.await(task)
+            
+            if (!is_nil(error)), do: Logger.warn("Discarding error in concatenate_json: #{inspect(error)}")
 
-          receive do
-            { :json, json } -> send(consumer, { self, :chunk, "," <> json <> "]" })
+            case Poison.decode(body) do
+              {:ok, body_decoded} ->
+                Map.put(response, :body, body_decoded)
+                |> Poison.encode!
+
+              _not_json -> 
+                Poison.encode!(response)
+            end
           end
-        end
-      end
-
+          if (index == 0) do
+            json = "[#{json}"
+          else
+            json = ",#{json}"
+          end
+          
+          if (producer_count == index + 1), do: json = "#{json}]"
+          
+          send(consumer, { self, :chunk, json })
+      end)
+      
       send(consumer, { self, :done })
     end)
 
