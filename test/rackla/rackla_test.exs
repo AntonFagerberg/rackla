@@ -97,4 +97,62 @@ defmodule Rackla.Tests do
     assert response.error == %UndefinedFunctionError{arity: 2, function: :get!, module: Dict,
    self: false}
   end
+  
+  test "transform single function" do
+    error_msg = "custom error"
+    
+    response =
+      "invalid-url"
+      |> request
+      |> transform(&(Map.update!(&1, :error, fn(_e) -> error_msg end)))
+      |> collect_response
+      
+    assert response.error == error_msg
+  end
+  
+  test "transform multiple functions" do
+    error_msg = "custom error"
+    
+    [response1, response2] =
+      ["invalid-url", "invalid-url2"]
+      |> request
+      |> transform([
+          &(Map.update!(&1, :error, fn(_e) -> error_msg <> "1" end)),
+          &(Map.update!(&1, :error, fn(_e) -> error_msg <> "2" end))
+        ])
+      |> collect_response
+      
+    assert response1.error == error_msg <> "1"
+    assert response2.error == error_msg <> "2"
+  end
+    
+  test "transform list with fewer functions" do
+    error_msg = "custom error"
+    
+    [response1, response2] =
+      ["invalid-url", "invalid-url2"]
+      |> request
+      |> transform([ &(Map.update!(&1, :error, fn(_e) -> error_msg end)) ])
+      |> collect_response
+      
+    assert response1.error == error_msg
+    assert response2.error == :nxdomain
+  end
+  
+  test "transform list with too many functions" do
+    error_msg = "custom error"
+    
+    [response1, response2] =
+      ["invalid-url", "invalid-url2"]
+      |> request
+      |> transform([
+          &(Map.update!(&1, :error, fn(_e) -> error_msg <> "1" end)),
+          &(Map.update!(&1, :error, fn(_e) -> error_msg <> "2" end)),
+          &(Map.update!(&1, :error, fn(_e) -> error_msg <> "3" end))
+        ])
+      |> collect_response
+      
+    assert response1.error == error_msg <> "1"
+    assert response2.error == error_msg <> "2"
+  end
 end

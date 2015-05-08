@@ -643,8 +643,13 @@ defmodule Rackla do
 
   @doc """
   `transform` can asynchronously transform responses within the pipeline. The
-  function takes a lambda function as its only argument. The lambda function
-  must take a `Rackla.Response` and return an `Rackla.Response`.
+  function takes one or many lambda function(s) as its only argument. The lambda 
+  function must take a `Rackla.Response` and return an `Rackla.Response`.
+  
+  If the list of functions is larger than the list of producers, the additional 
+  functions will be dropped. If the list of producers is longer than the list
+  of functions, the identity function will be for the producers without a 
+  function.
   
   Args:
     * `producers` - List of producers (Elixir PIDs which follows the protocol
@@ -652,16 +657,20 @@ defmodule Rackla do
     * `fun` - Lambda function or list of lambda functions. If the argument is
     one function, it will be applied to all messages - if the argument is a
     list of functions, one function will be applied to one response by zipping
-    them together and the list must therefore be of the same length as the 
-    producers.
+    them together.
   """
   @spec transform(producers, fun | [fun]) :: producers
   def transform(producers, func) when is_list(producers) and is_function(func) do
     transform(producers, List.duplicate(func, length(producers)))
   end
 
-  def transform(producers, func) when is_list(producers) and is_list(func) do
-    Enum.zip(producers, func) |> Enum.map(fn({producer, func}) ->
+  def transform(producers, funcs) when is_list(producers) and is_list(funcs) do
+    if (length(funcs) >= length(producers)), do: Logger.warn("Too many functions in transform, dropping some.")
+    
+    producers
+    |> Enum.with_index
+    |> Enum.map(fn({pid, index}) -> {pid, Enum.at(funcs, index, &(&1))} end)
+    |> Enum.map(fn({producer, func}) ->
       {:ok, new_producer} = Task.start_link(fn ->
                 
         try do
@@ -676,7 +685,9 @@ defmodule Rackla do
               consumer = receive do
                 { pid, :ready } -> pid
               end
-
+              
+              unless is_nil(error), do: send(consumer, { self, :error, error })
+              
               send(consumer, { self, :meta, meta })
               send(consumer, { self, :status, status })
               send(consumer, { self, :headers, headers })
