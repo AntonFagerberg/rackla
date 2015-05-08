@@ -155,4 +155,53 @@ defmodule Rackla.Tests do
     assert response1.error == error_msg <> "1"
     assert response2.error == error_msg <> "2"
   end
+  
+  test "transform with JSON conversion (string return)" do
+    response = 
+      "http://date.jsontest.com/"
+      |> request
+      |> transform(&(Map.update!(&1, :body, fn(body) -> body["date"] end)), json: true)
+      |> collect_response
+    
+    assert Regex.match?(~r/\d{2}-\d{2}-\d{4}/, response.body)
+  end
+  
+  test "transform with JSON conversion (map return)" do
+    response = 
+      "http://date.jsontest.com/"
+      |> request
+      |> transform(&(Map.update!(&1, :body, fn(body) -> %{date: body["date"]} end)), json: true)
+      |> collect_response
+    
+    {status, struct} = Poison.decode(response.body)
+    assert status == :ok
+    assert Map.keys(struct) == ["date"]
+    assert Regex.match?(~r/\d{2}-\d{2}-\d{4}/, struct["date"])
+  end
+  
+  test "transform with JSON conversion (invalid URL)" do
+    response = 
+      "invalid-url"
+      |> request
+      |> transform(&(Map.update!(&1, :body, fn(body) -> %{date: body["date"]} end)), json: true)
+      |> collect_response
+      
+    assert response.error == %Poison.SyntaxError{message: "Unexpected end of input", token: nil}
+  end
+  
+  test "transform with JSON conversion (invalid json)" do
+    response = 
+      "http://www.google.com"
+      |> request
+      |> transform(&(Map.update!(&1, :body, fn(body) -> %{date: body["date"]} end)), json: true)
+      |> collect_response
+    
+    is_poison_error = 
+      case response.error do
+        %Poison.SyntaxError{} -> true
+        _ -> false
+      end
+      
+    assert is_poison_error
+  end
 end

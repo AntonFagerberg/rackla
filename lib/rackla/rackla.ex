@@ -633,7 +633,7 @@ defmodule Rackla do
   def collect_response(producers) when is_list(producers) do
     producers
     |> Enum.map(&(Task.async(fn -> collect_response(&1) end)))
-    |> Enum.map(&Task.await/1)
+    |> Enum.map(&(Task.await(&1, :infinity)))
   end
 
   def collect_response(producer) when is_pid(producer) do
@@ -658,13 +658,22 @@ defmodule Rackla do
     one function, it will be applied to all messages - if the argument is a
     list of functions, one function will be applied to one response by zipping
     them together.
+    * `options` - (Optional) Options (see below).
+    
+  Options:
+    * `json` - boolean which if set to true will decode the body of the 
+    `Rackla.Response` from JSON to the corresponding Elixir data structure. If
+    this is set to true, the `Rackla.Response` returned from the lambda function
+    should also return the body as an Elixir data structure.
   """
   @spec transform(producers, fun | [fun]) :: producers
-  def transform(producers, func) when is_list(producers) and is_function(func) do
-    transform(producers, List.duplicate(func, length(producers)))
+  def transform(producers, funcs, options \\ [])
+  
+  def transform(producers, func, options) when is_list(producers) and is_function(func) do
+    transform(producers, List.duplicate(func, length(producers)), options)
   end
 
-  def transform(producers, funcs) when is_list(producers) and is_list(funcs) do
+  def transform(producers, funcs, options) when is_list(producers) and is_list(funcs) do
     if (length(funcs) >= length(producers)), do: Logger.warn("Too many functions in transform, dropping some.")
     
     producers
@@ -672,9 +681,15 @@ defmodule Rackla do
     |> Enum.map(fn({pid, index}) -> {pid, Enum.at(funcs, index, &(&1))} end)
     |> Enum.map(fn({producer, func}) ->
       {:ok, new_producer} = Task.start_link(fn ->
+        
+        response = collect_response(producer)
                 
         try do
-          case func.(collect_response(producer)) do
+          if (Dict.get(options, :json, false)) do
+            response = Map.update!(response, :body, &Poison.decode!/1)
+          end
+          
+          case func.(response) do
             %Rackla.Response{
               status: status,
               headers: headers,
@@ -682,6 +697,10 @@ defmodule Rackla do
               meta: meta,
               error: error
             } -> 
+              if (Dict.get(options, :json, false) && !is_binary(body)) do
+                body = Poison.encode!(body) 
+              end
+              
               consumer = receive do
                 { pid, :ready } -> pid
               end
@@ -696,10 +715,19 @@ defmodule Rackla do
               
             other ->
               Logger.warn("Expected type Rackla.Response in transform. Got: #{inspect(other)}")
+              
+              consumer = receive do
+                { pid, :ready } -> pid
+              end
+              
               send(consumer, { self, :error, other})
           end
         rescue
           exception -> 
+            unless is_nil(response.error) do
+              Logger.warn("Existing unhandled error was discarded: #{inspect(response.error)}")
+            end
+            
             Logger.warn("Exception thrown in transform: #{inspect(exception)}")
             
             consumer = receive do
