@@ -351,7 +351,7 @@ defmodule Rackla do
                       
                     {:hackney_response, ^id, {:error, reason}} ->
                       send(consumer, { self, :error, reason })
-                      Logger.info("HTTP request error: #{inspect(reason)}")
+                      warn_request(reason)
                       Kernel.exit(:normal)
                   end
 
@@ -361,14 +361,14 @@ defmodule Rackla do
                       
                     {:hackney_response, ^id, {:error, reason}} ->
                       send(consumer, { self, :error, reason})
-                      Logger.info("HTTP request error: #{inspect(reason)}")
+                      warn_request(reason)
                       Kernel.exit(:normal)
                   end
 
                   get_hackney_chunk(id, consumer)
                   
                 {:error, reason} ->
-                  Logger.info("HTTP request error: #{inspect(reason)}")
+                  warn_request(reason)
                   
                   consumer = receive do
                     { pid, :ready } -> pid
@@ -474,7 +474,7 @@ defmodule Rackla do
             end
             
           {^producer, :error, reason} ->
-            Logger.info("Error message received during response: #{inspect(reason)}")
+            warn_response(reason)
             conn
         end
       end
@@ -490,7 +490,7 @@ defmodule Rackla do
             end
             
           {^producer, :error, reason} ->
-            Logger.info("Error message received during response: #{inspect(reason)}")
+            warn_response(reason)
             conn
         end
       end
@@ -500,7 +500,7 @@ defmodule Rackla do
           :ok
           
         {^producer, :error, reason} ->
-          Logger.info("Error message received during response: #{inspect(reason)}")
+          warn_response(reason)
           conn
       end
 
@@ -583,7 +583,7 @@ defmodule Rackla do
           else
             %Rackla.Response{body: body, error: error} = response = Task.await(task)
             
-            if (!is_nil(error)), do: Logger.warn("Discarding error in concatenate_json: #{inspect(error)}")
+            if (!is_nil(error)), do: Logger.warn("Discarding unhandeled error in concatenate_json: #{inspect(error)}")
 
             case Poison.decode(body) do
               {:ok, body_decoded} ->
@@ -665,25 +665,31 @@ defmodule Rackla do
       {:ok, new_producer} = Task.start_link(fn ->
                 
         try do
-          %Rackla.Response{
-            status: status,
-            headers: headers,
-            body: body,
-            meta: meta,
-            error: error
-          } = func.(collect_response(producer))
+          case func.(collect_response(producer)) do
+            %Rackla.Response{
+              status: status,
+              headers: headers,
+              body: body,
+              meta: meta,
+              error: error
+            } -> 
+              consumer = receive do
+                { pid, :ready } -> pid
+              end
 
-          consumer = receive do
-            { pid, :ready } -> pid
+              send(consumer, { self, :meta, meta })
+              send(consumer, { self, :status, status })
+              send(consumer, { self, :headers, headers })
+              send(consumer, { self, :chunk, body })
+              send(consumer, { self, :done })
+              
+            other ->
+              Logger.warn("Expected type Rackla.Response in transform. Got: #{inspect(other)}")
           end
-
-          send(consumer, { self, :meta, meta })
-          send(consumer, { self, :status, status })
-          send(consumer, { self, :headers, headers })
-          send(consumer, { self, :chunk, body })
-          send(consumer, { self, :done })
         rescue
           exception -> 
+            Logger.warn("Exception thrown in transform: #{inspect(exception)}")
+            
             consumer = receive do
               { pid, :ready } -> pid
             end
@@ -751,6 +757,9 @@ defmodule Rackla do
 
   ## Helpers
   
+  defp warn_response(reason), do: Logger.error("Aborting response: #{inspect(reason)}")
+  defp warn_request(reason), do: Logger.warn("HTTP request error: #{inspect(reason)}")
+  
   @spec response_compressed(producers, Conn.t, Dict.t) :: Conn.t
   defp response_compressed(producer, conn, options) when is_pid(producer) do
     %{body: body, headers: headers, status: status} = collect_response(producer)
@@ -769,7 +778,7 @@ defmodule Rackla do
       {:ok, new_conn} -> new_conn
 
       {:error, reason} ->
-        Logger.error("Unable to chunk response: #{inspect(reason)}")
+        warn_response(reason)
         conn
     end
   end
@@ -800,7 +809,7 @@ defmodule Rackla do
       {:ok, new_conn} -> new_conn
 
       {:error, reason} ->
-        Logger.error("Unable to chunk response: #{inspect(reason)}")
+        warn_response(reason)
         conn
     end
   end
@@ -857,17 +866,17 @@ defmodule Rackla do
                   {producer, response_chunked(conn, producer)}
                   
                 {^producer, :error, reason} ->
-                  Logger.warn("Error message received during response: #{inspect(reason)}")
+                  warn_response(reason)
                   {producer, conn}
               end
 
             {^producer, :error, reason} ->
-              Logger.warn("Error message received during response: #{inspect(reason)}")
+              warn_response(reason)
               {producer, conn}
           end
         
         {producer, :error, reason} ->
-          Logger.warn("Error message received during response: #{inspect(reason)}")
+          warn_response(reason)
           {producer, conn}
       end
     
@@ -879,7 +888,7 @@ defmodule Rackla do
     receive do
       {:hackney_response, ^id, {:error, reason}} ->
         send(consumer, { self, :error, reason})
-        Logger.info("HTTP request error: #{inspect(reason)}")
+        warn_request(reason)
         Kernel.exit(:normal)
 
       {:hackney_response, ^id, :done} ->
@@ -897,7 +906,7 @@ defmodule Rackla do
   defp response_chunked(conn, producer) do
     receive do
       {^producer, :error, reason} ->
-        Logger.warn("Error message received during response: #{inspect(reason)}")
+        warn_response(reason)
         conn
         
       {^producer, :chunk, chunk} ->
@@ -906,7 +915,7 @@ defmodule Rackla do
             response_chunked(new_conn, producer)
           
           {:error, reason} -> 
-            Logger.error("Unable to chunk response: #{inspect(reason)}")
+            warn_response(reason)
             conn
         end
 
