@@ -83,13 +83,12 @@ defmodule Rackla.Tests do
       "invalid-url"
       |> request
       |> collect_response
-      |> Enum.at(0)
       
     assert response.error == :nxdomain
   end
   
   test "invalid transform" do
-    [response] = 
+    response = 
       "http://validate.jsontest.com/?json={%22key%22:%22value%22}"
       |> request
       |> transform(fn(response) -> Dict.get!(:invalid, response) end)
