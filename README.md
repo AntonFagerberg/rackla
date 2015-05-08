@@ -120,7 +120,7 @@ end
 The transform function works on a "per response" basis.
 
 ### Collect response
-Sometimes you want to break out of the asynchronous behavior. In such cases, you can utilize the `collect_response` function. When `collect_response` is used, it will wait until all request has responded and collect all responses in a list. Each item in the list is a `Rackla.Response` struct.
+Sometimes you want to break out of the asynchronous behavior. In such cases, you can utilize the `collect_response` function. When `collect_response` is used, it will wait until all request has responded and collect all responses of type `Rackla.Response` in to a list, or as a single `Rackla.Response` if there is only one.
 
 ### Multiple pipelines
 It is important to point out that you can define multiple pipelines - either to be used in parallel or recursively. You may have two different collections of URLs which should be processed in different ways. This can be accomplished by creating two pipelines which are then concatenated:

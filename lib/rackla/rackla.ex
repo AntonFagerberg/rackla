@@ -108,7 +108,7 @@ defmodule Rackla do
   The transform function works on a "per response" basis.
 
   ### Collect response
-  Sometimes you want to break out of the asynchronous behavior. In such cases, you can utilize the `collect_response` function. When `collect_response` is used, it will wait until all request has responded and collect all responses in a list. Each item in the list is a `Rackla.Response` struct.
+  Sometimes you want to break out of the asynchronous behavior. In such cases, you can utilize the `collect_response` function. When `collect_response` is used, it will wait until all request has responded and collect all responses of type `Rackla.Response` in to a list, or as a single `Rackla.Response` if there is only one.
 
   ### Multiple pipelines
   It is important to point out that you can define multiple pipelines - either to be used in parallel or recursively. You may have two different collections of URLs which should be processed in different ways. This can be accomplished by creating two pipelines which are then concatenated:
@@ -613,15 +613,22 @@ defmodule Rackla do
   
   @doc """
   `collect_response` works as a way to break out of the asynchronous nature of
-  the pipeline. `collect_response` takes a list of producers and returns a (list
-  of) `Rackla.Response` struct containing the body (payload), headers, status 
-  code, potential errors and meta data.
+  the pipeline. `collect_response` takes a single or a list of producers and 
+  returns a single or a list of `Rackla.Response` struct containing the body 
+  (payload), headers, status  code, potential errors and meta data.
+  
+  If the list only contains one producer, one `Rackla.Response` will be
+  returned - not in a list.
   
   Args:
     * `producers` - List of producers (Elixir PIDs which follows the protocol
     defined by Rackla).
   """
   @spec collect_response(producers) :: [Rackla.Response.t] | Rackla.Response.t
+  
+  def collect_response([producer]) when is_pid(producer) do
+    collect_response(producer)
+  end
   
   def collect_response(producers) when is_list(producers) do
     producers
