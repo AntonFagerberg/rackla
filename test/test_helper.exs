@@ -1,2 +1,2 @@
 ExUnit.start()
-Logger.configure(level: :error)
+Logger.configure(level: :info)

@@ -674,7 +674,7 @@ defmodule Rackla do
   end
 
   def transform(producers, funcs, options) when is_list(producers) and is_list(funcs) do
-    if (length(funcs) >= length(producers)), do: Logger.warn("Too many functions in transform, dropping some.")
+    if (length(funcs) > length(producers)), do: Logger.warn("Too many functions in transform, dropping some.")
     
     producers
     |> Enum.with_index
