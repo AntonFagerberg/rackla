@@ -99,21 +99,18 @@ defmodule Router do
     func_creator = fn(key) ->
       fn(response) ->
         Map.update!(response, :body, fn(body) ->
-          body 
-          |> Poison.decode! 
-          |> Map.has_key?(key) 
-          |> to_string 
+          body[key]
         end)
       end
     end
 
     uris = String.split(conn.query_string, "|")
     funcs =
-      ["object_or_array", "ip", "one", "time"]
+      ["key-a", "key-b", "key-c", "key-d"]
       |> Enum.map(func_creator)
 
     request(uris)
-    |> transform(funcs)
+    |> transform(funcs, json: true)
     |> response
   end
 
@@ -192,6 +189,35 @@ defmodule Router do
         Logger.error("Unable to chunk response: #{reason}")
         conn
     end
+  end
+  
+  # =============================== #
+  # API end-points used for testing #
+  # =============================== #
+  
+  get "/api/json/foo-bar" do
+    json = Poison.encode!(%{foo: "bar"})
+    
+    conn
+    |> put_resp_header("Content-Type", "application/json")
+    |> send_resp(200, json)
+  end
+  
+  get "/api/json/no-header/foo-bar" do
+    json = Poison.encode!(%{foo: "bar"})
+    send_resp(conn, 200, json)
+  end
+  
+  get "/api/text/foo-bar" do
+    send_resp(conn, 200, "foo-bar")
+  end
+  
+  get "/api/echo/:key/:value" do
+    json = Map.put(%{foo: "bar", baz: "qux"}, key, value) |> Poison.encode!
+    
+    conn
+    |> put_resp_header("Content-Type", "application/json")
+    |> send_resp(200, json)
   end
 
   match _ do

@@ -3,10 +3,9 @@ defmodule RouterTest do
   use Plug.Test
 
   @opts Router.init([])
-
   test "proxy request response" do
     conn =
-      conn(:get, "/proxy/?http://validate.jsontest.com/?json={%22key%22:%22value%22}")
+      conn(:get, "/proxy/?http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar")
       |> Router.call(@opts)
 
     assert conn.state == :chunked
@@ -14,18 +13,16 @@ defmodule RouterTest do
     assert conn.port == 80
     assert conn.scheme == :http
     assert conn.method == "GET"
-    assert get_resp_header(conn, "Content-Type") == ["application/json; charset=ISO-8859-1"]
+    assert get_resp_header(conn, "Content-Type") == ["application/json"]
 
-    json_response = Poison.decode!(conn.resp_body)
-    assert json_response["empty"] == false
-    assert json_response["object_or_array"] == "object"
-    assert json_response["size"] == 1
-    assert json_response["validate"] == true
+    response = Poison.decode!(conn.resp_body)
+    assert Map.has_key?(response, "foo")
+    assert response["foo"] == "bar"
   end
 
   test "proxy request, set response header" do
     conn =
-      conn(:get, "/proxy/set-headers/?http://validate.jsontest.com/?json={%22key%22:%22value%22}")
+      conn(:get, "/proxy/set-headers/?http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar")
       |> Router.call(@opts)
 
     assert conn.state == :chunked
@@ -35,16 +32,14 @@ defmodule RouterTest do
     assert conn.method == "GET"
     assert get_resp_header(conn, "Rackla") == ["CrocodilePear"]
 
-    json_response = Poison.decode!(conn.resp_body)
-    assert json_response["empty"] == false
-    assert json_response["object_or_array"] == "object"
-    assert json_response["size"] == 1
-    assert json_response["validate"] == true
+    response = Poison.decode!(conn.resp_body)
+    assert Map.has_key?(response, "foo")
+    assert response["foo"] == "bar"
   end
 
   test "request to json" do
     conn =
-      conn(:get, "/proxy/concat-json/?http://validate.jsontest.com/?json={%22key%22:%22value%22}")
+      conn(:get, "/proxy/concat-json/?http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/no-header/foo-bar")
       |> Router.call(@opts)
 
     assert conn.state == :chunked
@@ -69,13 +64,13 @@ defmodule RouterTest do
   end
 
   test "multiple requests to json" do
-    uris = [
-      "http://validate.jsontest.com/?json={%22key%22:%22value%22}",
-      "http://validate.jsontest.com/?json={%22key%22:%22value%22}"
+    urls = [
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar",
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar"
     ]
 
     conn =
-      conn(:get, "/proxy/multi/concat-json/?#{Enum.join(uris, "|")}")
+      conn(:get, "/proxy/multi/concat-json/?#{Enum.join(urls, "|")}")
       |> Router.call(@opts)
 
     assert conn.state == :chunked
@@ -89,7 +84,7 @@ defmodule RouterTest do
 
     assert :ok == decode_status
     assert is_list(json_decoded)
-    assert length(json_decoded) == length(uris)
+    assert length(json_decoded) == length(urls)
 
 
     Enum.each(json_decoded, fn(item) ->
@@ -101,13 +96,13 @@ defmodule RouterTest do
   end
   
   test "multiple requests to json with mixed input (json / html)" do
-    uris = [
-      "http://validate.jsontest.com/?json={%22key%22:%22value%22}",
-      "http://www.google.com"
+    urls = [
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar",
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
     ]
 
     conn =
-      conn(:get, "/proxy/multi/concat-json/?#{Enum.join(uris, "|")}")
+      conn(:get, "/proxy/multi/concat-json/?#{Enum.join(urls, "|")}")
       |> Router.call(@opts)
 
     assert conn.state == :chunked
@@ -121,26 +116,28 @@ defmodule RouterTest do
 
     assert :ok == decode_status
     assert is_list(json_decoded)
-    assert length(json_decoded) == length(uris)
+    assert length(json_decoded) == length(urls)
 
     Enum.each(json_decoded, fn(item) ->
       assert Map.has_key?(item, "body")
       assert Map.has_key?(item, "headers")
       assert Map.has_key?(item, "status")
       assert Map.has_key?(item, "meta")
+      assert Map.has_key?(item, "error")
     end)
-
-    assert (json_decoded |> Enum.at(0) |> Map.get("body") |> is_map && json_decoded |> Enum.at(1) |> Map.get("body") |> is_bitstring) || (json_decoded |> Enum.at(1) |> Map.get("body") |> is_map && json_decoded |> Enum.at(0) |> Map.get("body") |> is_bitstring)
+    
+    assert json_decoded  |> Enum.at(0) |> Map.get("body") |> is_map
+    assert json_decoded  |> Enum.at(1) |> Map.get("body") |> is_binary
   end
   
   test "multiple requests to json (body only) with mixed input (json / html)" do
-    uris = [
-      "http://validate.jsontest.com/?json={%22key%22:%22value%22}",
-      "http://www.google.com"
+    urls = [
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar",
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
     ]
 
     conn =
-      conn(:get, "/proxy/multi/concat-json/body-only/?#{Enum.join(uris, "|")}")
+      conn(:get, "/proxy/multi/concat-json/body-only/?#{Enum.join(urls, "|")}")
       |> Router.call(@opts)
 
     assert conn.state == :chunked
@@ -154,20 +151,20 @@ defmodule RouterTest do
 
     assert :ok == decode_status
     assert is_list(json_decoded)
-    assert length(json_decoded) == length(uris)
-    assert (json_decoded |> Enum.at(0) |> is_map && json_decoded |> Enum.at(1) |> is_bitstring) || (json_decoded |> Enum.at(1) |> is_map && json_decoded |> Enum.at(0) |> is_bitstring)
+    assert length(json_decoded) == length(urls)
+    
+    assert json_decoded  |> Enum.at(0) |> is_map
+    assert json_decoded  |> Enum.at(1) |> is_binary
   end
 
   test "proxy multiple requests to a response" do
-    uris = [
-      "http://validate.jsontest.com/?json={%22key%22:%22value%22}",
-      "http://ip.jsontest.com/",
-      "http://echo.jsontest.com/key/value/one/two",
-      "http://date.jsontest.com/"
+    urls = [
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar",
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
     ]
 
     conn =
-      conn(:get, "/proxy/multi/?#{Enum.join(uris, "|")}")
+      conn(:get, "/proxy/multi/?#{Enum.join(urls, "|")}")
       |> Router.call(@opts)
 
     assert conn.state == :chunked
@@ -176,44 +173,40 @@ defmodule RouterTest do
     assert conn.scheme == :http
     assert conn.method == "GET"
 
-    assert String.contains?(conn.resp_body, "ip")
-    assert String.contains?(conn.resp_body, "milliseconds_since_epoch")
-    assert String.contains?(conn.resp_body, "validate")
-    assert String.contains?(conn.resp_body, "two")
+    assert String.contains?(conn.resp_body, "{\"foo\":\"bar\"}")
+    assert String.contains?(conn.resp_body, "foo-bar")
   end
 
   test "transform blanker" do
-    uri = "http://validate.jsontest.com/?json={%22key%22:%22value%22}"
+    url = "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar"
 
     conn =
-      conn(:get, "/proxy/?#{uri}")
+      conn(:get, "/proxy/?#{url}")
       |> Router.call(@opts)
 
     assert conn.status == 200
-    assert length(conn.resp_headers) > 1
+    assert get_resp_header(conn, "Content-Type") == ["application/json"]
     assert String.length(conn.resp_body) > 0
 
     conn =
-      conn(:get, "/proxy/transform/blanker/?#{uri}")
+      conn(:get, "/proxy/transform/blanker/?#{url}")
       |> Router.call(@opts)
 
     assert conn.status == 404
-    assert length(conn.resp_headers) == 1
+    assert get_resp_header(conn, "Content-Type") != ["application/json"]
     assert String.length(conn.resp_body) == 0
   end
 
   test "transform identity" do
-    uri = "http://headers.jsontest.com/"
+    url = "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar"
 
     conn1 =
-      conn(:get, "/proxy/?#{uri}")
+      conn(:get, "/proxy/?#{url}")
       |> Router.call(@opts)
-      |> delete_resp_header("Date")
 
     conn2 =
-      conn(:get, "/proxy/transform/identity/?#{uri}")
+      conn(:get, "/proxy/transform/identity/?#{url}")
       |> Router.call(@opts)
-      |> delete_resp_header("Date")
 
     assert conn1.status == conn2.status
     assert conn1.resp_headers == conn2.resp_headers
@@ -221,28 +214,20 @@ defmodule RouterTest do
   end
 
   test "multiple transform functions" do
-    uris = [
-      "http://validate.jsontest.com/?json={%22key%22:%22value%22}",
-      "http://ip.jsontest.com/",
-      "http://echo.jsontest.com/key/value/one/two",
-      "http://date.jsontest.com/"
+    val_a = "value-a"
+    val_b = "value-b"
+    val_c = "value-c"
+    val_d = "value-d"
+    
+    urls = [
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/echo/key-a/#{val_a}",
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/echo/key-b/#{val_b}",
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/echo/key-c/#{val_c}",
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/echo/key-d/#{val_d}"
     ]
 
     conn =
-      conn(:get, "/proxy/transform/multi/?#{Enum.join(uris, "|")}")
-      |> Router.call(@opts)
-
-    assert conn.state == :chunked
-    assert conn.status == 200
-    assert conn.port == 80
-    assert conn.scheme == :http
-    assert conn.method == "GET"
-    assert conn.resp_body == "truetruetruetrue"
-  end
-
-  test "transform json concatenated requests" do
-    conn =
-      conn(:get, "/temperature/?malmo,se|halmstad,se|san francisco,us|stockholm,se")
+      conn(:get, "/proxy/transform/multi/?#{Enum.join(urls, "|")}")
       |> Router.call(@opts)
 
     assert conn.state == :chunked
@@ -251,24 +236,25 @@ defmodule RouterTest do
     assert conn.scheme == :http
     assert conn.method == "GET"
 
-    response = Poison.decode!(conn.resp_body)
-
-    assert length(response) == 4
+    assert String.contains?(conn.resp_body, val_a)
+    assert String.contains?(conn.resp_body, val_b)
+    assert String.contains?(conn.resp_body, val_c)
+    assert String.contains?(conn.resp_body, val_d)
     
-    [a, b, c, d] = response
-    assert Map.keys(a) == ["Malmo"]
-    assert Map.keys(b) == ["Halmstad"]
-    assert Map.keys(c) == ["San Francisco"]
-    assert Map.keys(d) == ["Stockholm"]
+    assert  conn.resp_body  
+    |> String.replace(val_a, "") 
+    |> String.replace(val_b, "") 
+    |> String.replace(val_c, "") 
+    |> String.replace(val_d, "") == ""
   end
-  
+
   test "compressed response" do
     conn_uncompressed =
-      conn(:get, "/proxy/?http://ip.jsontest.com/")
+      conn(:get, "/proxy/?http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar")
       |> Router.call(@opts)
     
     conn_compressed =
-      conn(:get, "/proxy/gzip/?http://ip.jsontest.com/")
+      conn(:get, "/proxy/gzip/?http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar")
       |> Router.call(@opts)
       
       assert conn_uncompressed.state == conn_compressed.state
