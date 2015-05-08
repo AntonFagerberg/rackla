@@ -696,6 +696,7 @@ defmodule Rackla do
               
             other ->
               Logger.warn("Expected type Rackla.Response in transform. Got: #{inspect(other)}")
+              send(consumer, { self, :error, other})
           end
         rescue
           exception -> 
