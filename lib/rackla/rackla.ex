@@ -284,8 +284,8 @@ defmodule Rackla do
 
   @doc """
   `request` is usually the beginning of a pipeline. It executes all
-  HTTP requests concurrently and returns a list of Elixir PIDs (producers) which
-  will respond as soon as a response is available.
+  HTTP requests concurrently and returns a single or a list of Elixir PIDs (
+  producers) which will respond as soon as a response is available.
   
   Args:
     * `requests` - String (URL), `Rackla.Request` struct or list of strings or 
@@ -305,7 +305,7 @@ defmodule Rackla do
   def request(requests, options \\ %{})
   
   def request(request, options) when is_bitstring(request) or is_map(request) do
-    request([request], options)
+    request([request], options) |> Enum.at(0)
   end
 
   def request(requests, options) when is_list(requests) do
@@ -342,8 +342,6 @@ defmodule Rackla do
                   consumer = receive do
                     { pid, :ready } -> pid
                   end
-                  
-                  send(consumer, { self, :meta, meta })
 
                   receive do
                     {:hackney_response, ^id, {:headers, headers}} ->
@@ -364,6 +362,8 @@ defmodule Rackla do
                       warn_request(reason)
                       Kernel.exit(:normal)
                   end
+                  
+                  send(consumer, { self, :meta, meta })
 
                   get_hackney_chunk(id, consumer)
                   
@@ -390,7 +390,7 @@ defmodule Rackla do
                 { pid, :ready } -> pid
               end
               
-              if (is_nil(error)) do
+              if is_nil(error) do
                 send(consumer, { self, :status, status })
                 send(consumer, { self, :meta, meta })
                 send(consumer, { self, :headers, headers })
@@ -437,12 +437,13 @@ defmodule Rackla do
   `response_conn` uses `conn` from Plug in order to transmit the responses from the 
   producers to the client over HTTP.
   
-  If there is only one item in the `producers` list, that `producer`'s headers
-  and status code will be added to the response per default if not already sent.
+  If there is only a single producer, that producer's headers and status 
+  code will be added to the response per default - if no headers or status has
+  been sent already.
   
   Args:
-    * `producers` - List of producers (Elixir PIDs which follows the protocol
-    defined by Rackla).
+    * `producers` - Single or list of producers (Elixir PIDs which follows the
+    protocol defined by Rackla).
     * `conn` - Plug´s `conn` structure.
     * `options` - (Optional) Options (see below).
     
@@ -453,6 +454,10 @@ defmodule Rackla do
   """
   @spec response_conn(producers, Conn.t, Dict.t) :: Conn.t
   def response_conn(producers, conn, options \\ [])
+  
+  def response_conn(producer, conn, options) when is_pid(producer) do
+    response_conn([producer], conn, options)
+  end
 
   def response_conn([producer], conn, options) do
     if (Dict.get(options, :compress, false)) do
@@ -467,10 +472,7 @@ defmodule Rackla do
               conn
             else
               option_headers = Dict.get(options, :headers, %{})
-              
-              conn
-              |> set_headers(response_headers)
-              |> set_headers(option_headers)
+              set_headers(conn, Dict.merge(response_headers, option_headers))
             end
             
           {^producer, :error, reason} ->
@@ -485,8 +487,7 @@ defmodule Rackla do
             if (conn.state == :chunked) do
               conn
             else
-              option_status = Dict.get(options, :status, status)
-              send_chunked(conn, option_status)
+              send_chunked(conn, Dict.get(options, :status, status))
             end
             
           {^producer, :error, reason} ->
@@ -519,23 +520,20 @@ defmodule Rackla do
         send(producer, { self, :ready })
       end)
       
-      option_status = Dict.get(options, :status, 200)
-      option_headers = Dict.get(options, :headers, %{})
-
       if (conn.state == :chunked) do
         response_chunked_multi(conn, producers)
       else
         conn
-        |> set_headers(option_headers)
-        |> send_chunked(option_status)
+        |> set_headers(Dict.get(options, :headers, %{}))
+        |> send_chunked(Dict.get(options, :status, 200))
         |> response_chunked_multi(producers)
       end
     end
   end
   
   @doc """
-  `concatenate_json` takes a list of producers (Elixir  PIDs), 
-  reads their messages and returns a new producer. The new producer´s
+  `concatenate_json` takes a single or a list of producers (Elixir  PIDs), 
+  reads their messages and returns one new producer. The new producer´s
   message (body) is formatted as a JSON list where each item corresponds to a
   response converted to a JSON map.
   
@@ -548,12 +546,24 @@ defmodule Rackla do
     * `options` - (Optional) Options (see below).
     
   Options:
+    * `:status` - status code for new the response, will default to 200 if not
+    defined.
+    * `:headers` - map with http response headers - if this value is defined,
+    it will override the default `Content-Type: application/json` so you have to
+    add it yourself.
+    * `:meta` - meta map for the new response.
     * `:body_only` - boolean indicating whether only the body (payload) of an
     response should be included in the response - otherwise headers, status and
     meta is also included.
   """
-  @spec concatenate_json(producers, Dict.t) :: [pid]
-  def concatenate_json(producers, options \\ []) when is_list(producers) do
+  @spec concatenate_json(producers, Dict.t) :: [pid] | pid
+  def concatenate_json(producers, options \\ [])
+  
+  def concatenate_json(producer, options) when is_pid(producer) do
+    concatenate_json([producer], options)
+  end
+  
+  def concatenate_json(producers, options) when is_list(producers) do
     {:ok, new_producer} = Task.start_link(fn ->
       producer_count = length(producers)
       
@@ -561,9 +571,9 @@ defmodule Rackla do
         { pid, :ready } -> pid
       end
 
-      send(consumer, { self, :meta, %{} })
-      send(consumer, { self, :status, 200 })
-      send(consumer, { self, :headers, %{"Content-Type" => "application/json"} })
+      send(consumer, { self, :meta, Dict.get(options, :meta, %{}) })
+      send(consumer, { self, :status, Dict.get(options, :status, 200) })
+      send(consumer, { self, :headers, Dict.get(options, :headers, %{"Content-Type" => "application/json"}) })
       
       producers
       |> Enum.map(&(Task.async(fn -> collect_response(&1) end)))
@@ -571,11 +581,11 @@ defmodule Rackla do
       |> Enum.each(fn({task, index}) ->
         json =
           if (Dict.get(options, :body_only, false)) do
-            %Rackla.Response{body: body} = Task.await(task)
+            %Rackla.Response{body: body} = Task.await(task, :infinity)
 
             case Poison.decode(body) do
-              {:ok, body_decoded} -> 
-                Poison.encode!(body_decoded)
+              {:ok, _decoded} -> 
+                body
 
               _not_json -> 
                 Poison.encode!(body)
@@ -583,7 +593,9 @@ defmodule Rackla do
           else
             %Rackla.Response{body: body, error: error} = response = Task.await(task)
             
-            if (!is_nil(error)), do: Logger.warn("Discarding unhandeled error in concatenate_json: #{inspect(error)}")
+            unless is_nil(error) do
+              Logger.warn("Discarding unhandeled error in concatenate_json: #{inspect(error)}")
+            end
 
             case Poison.decode(body) do
               {:ok, body_decoded} ->
@@ -594,11 +606,8 @@ defmodule Rackla do
                 Poison.encode!(response)
             end
           end
-          if (index == 0) do
-            json = "[#{json}"
-          else
-            json = ",#{json}"
-          end
+          
+          json = if (index == 0), do: "[#{json}", else: ",#{json}"          
           
           if (producer_count == index + 1), do: json = "#{json}]"
           
@@ -608,7 +617,7 @@ defmodule Rackla do
       send(consumer, { self, :done })
     end)
 
-    [new_producer]
+    new_producer
   end
   
   @doc """
@@ -666,28 +675,36 @@ defmodule Rackla do
     this is set to true, the `Rackla.Response` returned from the lambda function
     should also return the body as an Elixir data structure.
   """
-  @spec transform(producers, fun | [fun]) :: producers
+  @spec transform(producers, fun | [fun], Dict.t) :: producers
   def transform(producers, funcs, options \\ [])
+  
+  def transform(producer, func, options) when is_pid(producer) do
+    transform([producer], func, options) |> Enum.at(0)
+  end
   
   def transform(producers, func, options) when is_list(producers) and is_function(func) do
     transform(producers, List.duplicate(func, length(producers)), options)
   end
 
   def transform(producers, funcs, options) when is_list(producers) and is_list(funcs) do
-    if (length(funcs) > length(producers)), do: Logger.warn("Too many functions in transform, dropping some.")
+    if length(funcs) > length(producers) do
+      Logger.warn("Too many functions in transform, dropping some.")
+    end
     
     producers
     |> Enum.with_index
-    |> Enum.map(fn({pid, index}) -> {pid, Enum.at(funcs, index, &(&1))} end)
-    |> Enum.map(fn({producer, func}) ->
+    |> Enum.map(fn({producer, index}) ->
       {:ok, new_producer} = Task.start_link(fn ->
-        
         response = collect_response(producer)
                 
         try do
-          if (Dict.get(options, :json, false)) do
+          decode_json = Dict.get(options, :json, false)
+          
+          if decode_json do
             response = Map.update!(response, :body, &Poison.decode!/1)
           end
+          
+          func = Enum.at(funcs, index, &(&1))
           
           case func.(response) do
             %Rackla.Response{
@@ -697,7 +714,7 @@ defmodule Rackla do
               meta: meta,
               error: error
             } -> 
-              if (Dict.get(options, :json, false) && !is_binary(body)) do
+              if decode_json && !is_binary(body) do
                 body = Poison.encode!(body) 
               end
               
@@ -705,13 +722,15 @@ defmodule Rackla do
                 { pid, :ready } -> pid
               end
               
-              unless is_nil(error), do: send(consumer, { self, :error, error })
-              
-              send(consumer, { self, :meta, meta })
-              send(consumer, { self, :status, status })
-              send(consumer, { self, :headers, headers })
-              send(consumer, { self, :chunk, body })
-              send(consumer, { self, :done })
+              if is_nil(error) do 
+                send(consumer, { self, :meta, meta })
+                send(consumer, { self, :status, status })
+                send(consumer, { self, :headers, headers })
+                send(consumer, { self, :chunk, body })
+                send(consumer, { self, :done })
+              else
+                send(consumer, { self, :error, error })
+              end
               
             other ->
               Logger.warn("Expected type Rackla.Response in transform. Got: #{inspect(other)}")
@@ -795,16 +814,18 @@ defmodule Rackla do
     thing
   end
 
-  ## Helpers
+  # --------------- #
+  # Private helpers #
+  # --------------- #
   
-  defp warn_response(reason), do: Logger.error("Aborting response: #{inspect(reason)}")
+  defp warn_response(reason), do: Logger.error("HTTP response error: #{inspect(reason)}")
   defp warn_request(reason), do: Logger.warn("HTTP request error: #{inspect(reason)}")
   
   @spec response_compressed(producers, Conn.t, Dict.t) :: Conn.t
   defp response_compressed(producer, conn, options) when is_pid(producer) do
     %{body: body, headers: headers, status: status} = collect_response(producer)
     
-    option_headers = Dict.get(options, :headers, [])
+    option_headers = Dict.get(options, :headers, %{})
     option_status = Dict.get(options, :status, status)
     
     chunk_status = 
@@ -831,19 +852,12 @@ defmodule Rackla do
       |> Enum.join
       |> :zlib.gzip
     
-    option_headers = Dict.get(options, :headers, [])
-    option_status = Dict.get(options, :status, 200)
-    
     chunk_status =
-      if (conn.state == :chunked) do
-        chunk(conn, body)
-      else
-        conn
-        |> set_headers(option_headers)
-        |> put_resp_header("content-encoding", "gzip")
-        |> send_chunked(option_status)
-        |> chunk(body)
-      end
+      conn
+      |> set_headers(Dict.get(options, :headers, %{}))
+      |> put_resp_header("content-encoding", "gzip")
+      |> send_chunked(Dict.get(options, :status, 200))
+      |> chunk(body)
     
     case chunk_status do
       {:ok, new_conn} -> new_conn
@@ -892,17 +906,17 @@ defmodule Rackla do
   end
 
 
-  @spec response_chunked_multi(Conn.t, [pid]) :: Conn.t
+  @spec response_chunked_multi(Conn.t, producers) :: Conn.t
   defp response_chunked_multi(conn, []), do: conn
 
   defp response_chunked_multi(conn, producers) do
     {producer, conn} = 
       receive do
-        {producer, :headers, _headers} -> 
+        {producer, :status, _status} -> 
           receive do
-            {^producer, :meta, _meta} -> 
+            {^producer, :headers, _headers} -> 
               receive do
-                {^producer, :status, _status} -> 
+                {^producer, :meta, _meta} -> 
                   {producer, response_chunked(conn, producer)}
                   
                 {^producer, :error, reason} ->
@@ -975,7 +989,7 @@ defmodule Rackla do
   defp aggregate_response(producer, response \\ %Rackla.Response{}) do
     receive do
       {^producer, :chunk, chunk} ->
-        response = Map.update(response, :body, chunk, fn(existing) -> existing <> chunk end)
+        response = Map.update(response, :body, chunk, &(&1 <> chunk))
         aggregate_response(producer, response)
 
       {^producer, :error, reason} ->

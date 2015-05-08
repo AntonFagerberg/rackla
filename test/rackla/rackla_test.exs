@@ -5,19 +5,16 @@ defmodule Rackla.Tests do
   import Rackla
 
   test "request process" do
-    producers = request("http://validate.jsontest.com/?json={%22key%22:%22value%22}")
-    assert is_list(producers)
-    assert length(producers) == 1
+    producer = request("http://validate.jsontest.com/?json={%22key%22:%22value%22}")
+    assert is_pid(producer)
 
-    Enum.each(producers, fn(producer) ->
-      send(producer, { self, :ready })
+    send(producer, { self, :ready })
 
-      assert_receive { ^producer, :headers, _headers }, 1_000
-      assert_receive { ^producer, :status, _status }, 1_000
-      assert_receive { ^producer, :meta, _meta }, 1_000
-      assert_receive { ^producer, :chunk, _chunks }, 1_000
-      assert_receive { ^producer, :done }, 1_000
-    end)
+    assert_receive { ^producer, :headers, _headers }, 1_000
+    assert_receive { ^producer, :status, _status }, 1_000
+    assert_receive { ^producer, :meta, _meta }, 1_000
+    assert_receive { ^producer, :chunk, _chunks }, 1_000
+    assert_receive { ^producer, :done }, 1_000
   end
 
   test "request process on multiple URIs" do
@@ -41,7 +38,7 @@ defmodule Rackla.Tests do
   end
 
   test "collect response to map" do
-    [producer | _] = request("http://validate.jsontest.com/?json={%22key%22:%22value%22}")
+    producer = request("http://validate.jsontest.com/?json={%22key%22:%22value%22}")
 
     response = collect_response(producer)
     assert is_map(response)
