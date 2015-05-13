@@ -126,6 +126,98 @@ defmodule Rackla.Tests do
     assert is_list(response_item)
     assert response_item == expected_response
   end
+  
+  test "Rackla.flat_map - single resuorce" do
+    response_item =
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar"
+      |> request
+      |> flat_map(fn(_) ->
+        request("http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar")
+      end)
+      |> map(&(&1.body))
+      |> collect
+      
+    assert is_binary(response_item)
+    assert response_item == "foo-bar"
+  end
+  
+  test "Rackla.flat_map - deep nesting" do
+    url_1 = "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar"
+    url_2 = "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
+    
+    response_item =
+      url_1
+      |> request
+      |> flat_map(fn(_) ->
+        request([url_1, url_1])
+        |> flat_map(fn(_) ->
+          request([url_2, url_2, url_2])
+        end)
+      end)
+      |> map(&(&1.body))
+      |> collect
+
+    expected_response =
+      Stream.repeatedly(fn -> "foo-bar" end)
+      |> Stream.take(6)
+      |> Enum.to_list
+      
+    assert is_list(response_item)
+    assert length(response_item) == 6
+    assert response_item == expected_response
+  end
+  
+  test "Rackla.reduce - no accumulator" do
+    url = "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
+    
+    reduce_function = 
+      fn(x, acc) ->
+        String.upcase(x) <> acc
+      end
+      
+    response_item = 
+      [url, url, url]
+      |> request
+      |> map(&(&1.body))
+      |> reduce(reduce_function)
+      |> collect
+      
+    expected_response =
+      Stream.repeatedly(fn -> "foo-bar" end)
+      |> Stream.take(3)
+      |> Enum.to_list
+      |> Enum.reduce(reduce_function)
+      
+    assert is_binary(response_item)
+    assert response_item == expected_response
+  end
+  
+  test "Rackla.reduce - with accumulator" do
+    url = "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
+    
+    reduce_function = 
+      fn(x, acc) ->
+        String.upcase(x) <> acc
+      end
+    
+    accumulator = ""
+      
+    response_item = 
+      [url, url, url]
+      |> request
+      |> map(&(&1.body))
+      |> reduce(accumulator, reduce_function)
+      |> collect
+      
+    expected_response =
+      Stream.repeatedly(fn -> "foo-bar" end)
+      |> Stream.take(3)
+      |> Enum.to_list
+      |> Enum.reduce(accumulator, reduce_function)
+      
+    assert is_binary(response_item)
+    assert response_item == expected_response
+  end
 
   # test "invalid URL" do
   #   response =

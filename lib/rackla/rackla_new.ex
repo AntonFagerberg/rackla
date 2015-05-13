@@ -120,7 +120,7 @@ defmodule Rackla do
             try do
               send(producer, {self, :ready})
 
-              %Rackla{producers: new_producers} =
+              %Rackla{} = new_producers =
                 receive do
                   {^producer, %Rackla{} = nested_producers} ->
                     flat_map(nested_producers, fun)
@@ -128,10 +128,10 @@ defmodule Rackla do
                   {^producer, thing} ->
                     fun.(thing)
                 end
-
+                
               receive do
                 {consumer, :ready} ->
-                  send(consumer, {self, %Rackla{producers: new_producers}})
+                  send(consumer, {self, new_producers})
               end
             rescue
               exception ->
@@ -150,23 +150,78 @@ defmodule Rackla do
     %Rackla{producers: new_producers}
   end
 
-  def reduce(), do: :ok #todo
-
-  def collect(%Rackla{producers: producers}, options \\ []) do
-    [single_response | rest] = all_responses =
-      Enum.flat_map(producers, fn(producer) ->
-        send(producer, {self, :ready})
-
+  def reduce(%Rackla{} = rackla, fun) when is_function(fun, 2) do
+    {:ok, new_producer} =
+      Task.start_link(fn ->
+        response = reduce_recursive(rackla, fun)
+        
         receive do
-          {^producer, %Rackla{} = nested_producers} ->
-            collect(nested_producers)
-
-          {^producer, response} ->
-            [response]
+          {consumer, :ready} -> send(consumer, {self, response})
         end
       end)
+      
+    %Rackla{producers: [new_producer]}
+  end
+  
+  def reduce(%Rackla{} = rackla, acc, fun) when is_function(fun, 2) do
+    {:ok, new_producer} =
+      Task.start_link(fn ->
+        response = reduce_recursive(rackla, acc, fun)
+        
+        receive do
+          {consumer, :ready} -> send(consumer, {self, response})
+        end
+      end)
+      
+    %Rackla{producers: [new_producer]}
+  end
+  
+  defp reduce_recursive(%Rackla{producers: producers}, fun) do
+    [producer | tail_producers] = producers
+    send(producer, {self, :ready})
+    
+    acc =
+      receive do
+        {^producer, %Rackla{} = nested_producers} ->
+          reduce(nested_producers, fun)
+        
+        {^producer, thing} -> thing
+      end
 
+    reduce_recursive(%Rackla{producers: tail_producers}, acc, fun)
+  end
+  
+  defp reduce_recursive(%Rackla{producers: producers}, acc, fun) do
+    Enum.reduce(producers, acc, fn(producer, acc) ->
+      send(producer, {self, :ready})
+      
+      receive do
+        {^producer, %Rackla{} = nested_producers} ->
+          reduce_recursive(nested_producers, acc, fun)
+          
+        {^producer, thing} ->
+          fun.(thing, acc)
+      end
+    end)
+  end
+
+  def collect(%Rackla{} = rackla, options \\ []) do
+    [single_response | rest] = all_responses = collect_recursive(rackla)
     if rest == [], do: single_response, else: all_responses
+  end
+  
+  defp collect_recursive(%Rackla{producers: producers}, options \\ []) do
+    Enum.flat_map(producers, fn(producer) ->
+      send(producer, {self, :ready})
+
+      receive do
+        {^producer, %Rackla{} = nested_producers} ->
+          collect_recursive(nested_producers)
+
+        {^producer, response} ->
+          [response]
+      end
+    end)
   end
 
   def join(%Rackla{producers: p1}, %Rackla{producers: p2}) do
