@@ -238,72 +238,145 @@ defmodule Rackla.Tests do
     assert is_number(response_item)
     assert response_item == expected_response
   end
-
-  # test "invalid URL" do
-  #   response =
-  #     "invalid-url"
-  #     |> request
-  #     |> collect_response
-  #
-  #   assert response.error == :nxdomain
-  # end
-  #
-  # test "invalid transform" do
-  #   response =
-  #   "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar"
-  #     |> request
-  #     |> transform(fn(response) -> Dict.get!(:invalid, response) end)
-  #     |> collect_response
-  #
-  #   assert response.error == %UndefinedFunctionError{arity: 2, function: :get!, module: Dict, self: false}
-  # end
-  # test "transform with JSON conversion (string return)" do
-  #   response =
-  #     "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/echo/key/value"
-  #     |> request
-  #     |> transform(&(Map.update!(&1, :body, fn(body) -> body["foo"] end)), json: true)
-  #     |> collect_response
-  #
-  #   assert response.body == "bar"
-  # end
-  #
-  # test "transform with JSON conversion (map return)" do
-  #   response =
-  #     "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/echo/key/value"
-  #     |> request
-  #     |> transform(&(Map.update!(&1, :body, fn(body) -> %{ack: body["foo"]} end)), json: true)
-  #     |> collect_response
-  #
-  #   {status, struct} = Poison.decode(response.body)
-  #   assert status == :ok
-  #   assert Map.keys(struct) |> length == 1
-  #   assert Map.has_key?(struct, "ack")
-  #   assert struct["ack"] == "bar"
-  # end
-  #
-  # test "transform with JSON conversion (invalid URL)" do
-  #   response =
-  #     "invalid-url"
-  #     |> request
-  #     |> transform(&(Map.update!(&1, :body, fn(body) -> %{date: body["date"]} end)), json: true)
-  #     |> collect_response
-  #
-  #   assert response.error == %Poison.SyntaxError{message: "Unexpected end of input", token: nil}
-  # end
-  #
-  # test "transform with JSON conversion (invalid json)" do
-  #   response =
-  #   "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
-  #     |> request
-  #     |> transform(&(Map.update!(&1, :body, fn(body) -> %{date: body["date"]} end)), json: true)
-  #     |> collect_response
-  #
-  #   is_poison_error =
-  #     case response.error do
-  #       %Poison.SyntaxError{} -> true
-  #       _ -> false
-  #     end
-  #
-  #   assert is_poison_error
-  # end
+  
+  test "Rackla.response - invalid URL" do
+    response_item =
+      "invalid-url"
+      |> request
+      |> collect
+    
+    assert response_item == {:error, :nxdomain}
+  end
+  
+  test "Rackla.response - valid and invalid URL" do
+    urls = [
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar",
+      "invalid-url"
+    ]
+    
+    [response_1, response_2] =
+      urls
+      |> request
+      |> collect
+    
+    assert is_map(response_1)
+    assert response_1.status == 200
+    assert response_1.body == "foo-bar"
+    assert is_map(response_1.headers)
+    assert Dict.keys(response_1) |> length == 3
+    
+    assert response_2 == {:error, :nxdomain}
+  end
+  
+  test "Rackla.map - valid and invalid URL" do
+    urls = [
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar",
+      "invalid-url"
+    ]
+    
+    [response_1, response_2] =
+      urls
+      |> request
+      |> map(fn(response) ->
+        case response do
+          {:error, term} -> term
+          %{body: body} -> body
+        end
+      end)
+      |> collect
+      
+    assert response_1 == "foo-bar"
+    assert response_2 == :nxdomain
+  end
+  
+  test "Rackla.flat_map - valid and invalid URL (variation 1)" do
+    urls = [
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar",
+      "invalid-url"
+    ]
+    
+    [response_1, response_2] =
+      just("test")
+      |> flat_map(fn(_) ->
+        request(urls)
+      end)
+      |> map(fn(response) ->
+        case response do
+          {:error, term} -> term
+          %{body: body} -> body
+        end
+      end)
+      |> collect
+      
+    assert response_1 == "foo-bar"
+    assert response_2 == :nxdomain
+  end
+  
+  test "Rackla.flat_map - valid and invalid URL (variation 2)" do
+    urls = [
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar",
+      "invalid-url"
+    ]
+    
+    [response_1, response_2] =
+      just("test")
+      |> flat_map(fn(_) ->
+        request(urls)
+        |> map(fn(response) ->
+          case response do
+            {:error, term} -> term
+            %{body: body} -> body
+          end
+        end)
+      end)
+      |> collect
+      
+    assert response_1 == "foo-bar"
+    assert response_2 == :nxdomain
+  end
+  
+  test "Rackla.map - raising exceptions" do
+    response_item = 
+      just("test")
+      |> map(fn(_) -> raise "ops" end)
+      |> collect
+      
+    assert response_item == {:error, %RuntimeError{message: "ops"}}
+  end
+  
+  test "Rackla.map - arithmetic error" do
+    response_item = 
+      just("test")
+      |> map(fn(_) -> 1/0 end)
+      |> collect
+      
+    assert response_item == {:error, %ArithmeticError{}}
+  end
+  
+  test "Rackla.flat_map - wrong return type" do
+    response_item = 
+      just("test")
+      |> flat_map(fn(_) -> "not a Rackla struct" end)
+      |> collect
+      
+    assert response_item == {:error, %MatchError{term: "not a Rackla struct"}}
+  end
+  
+  test "Rackla.map - raising exceptions" do
+    response_item = 
+      just("test")
+      |> flat_map(fn(_) -> raise "ops" end)
+      |> collect
+      
+    assert response_item == {:error, %RuntimeError{message: "ops"}}
+  end
+  
+  test "Rackla.flat_map - arithmetic error" do
+    response_item = 
+      just("test")
+      |> flat_map(fn(_) -> 1/0 end)
+      |> collect
+      
+    assert response_item == {:error, %ArithmeticError{}}
+  end
 end

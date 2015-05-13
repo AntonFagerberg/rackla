@@ -108,7 +108,7 @@ defmodule Rackla do
                   {pid, :ready} -> pid
                 end
 
-                send(consumer, {self, :error, exception})
+                send(consumer, {self, {:error, exception}})
             end
           end)
 
@@ -145,7 +145,7 @@ defmodule Rackla do
 
                 receive do
                   {consumer, :ready} ->
-                    send(consumer, {self, :error, exception})
+                    send(consumer, {self, {:error, exception}})
                 end
             end
           end)
@@ -333,7 +333,7 @@ defmodule Rackla do
       {pid, :ready} -> pid
     end
 
-    send(self, {:error, reason})
+    send(consumer, {self, {:error, reason}})
   end
 end
 
