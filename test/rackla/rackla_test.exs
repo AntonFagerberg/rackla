@@ -3,7 +3,11 @@ defmodule Rackla.Tests do
   use Plug.Test
 
   import Rackla
-
+  
+  # TODO tests
+  # - Timeouts
+  # - HTTP verbs (delete etc)
+  
   test "Rackla.request - single URL" do
     rackla = request("http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar")
 
@@ -52,6 +56,32 @@ defmodule Rackla.Tests do
     assert is_map(response_item)
     assert response_item.status == 200
     assert response_item.body == "foo-bar"
+    assert is_map(response_item.headers)
+    assert Dict.keys(response_item) |> length == 3
+  end
+  
+  test "Rackla.collect - collect single response (PUT)" do
+    response_item =
+      %{method: :put, url: "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"}
+      |> request
+      |> collect
+
+    assert is_map(response_item)
+    assert response_item.status == 200
+    assert response_item.body == "foo-bar-put"
+    assert is_map(response_item.headers)
+    assert Dict.keys(response_item) |> length == 3
+  end
+  
+  test "Rackla.collect - collect single response (POST)" do
+    response_item =
+      %{method: :post, url: "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"}
+      |> request
+      |> collect
+
+    assert is_map(response_item)
+    assert response_item.status == 200
+    assert response_item.body == "foo-bar-post"
     assert is_map(response_item.headers)
     assert Dict.keys(response_item) |> length == 3
   end

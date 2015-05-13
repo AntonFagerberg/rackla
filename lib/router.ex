@@ -202,7 +202,7 @@ defmodule Router do
     |> put_resp_header("Content-Type", "application/json")
     |> send_resp(200, json)
   end
-
+  
   get "/api/json/no-header/foo-bar" do
     json = Poison.encode!(%{foo: "bar"})
     send_resp(conn, 200, json)
@@ -210,6 +210,14 @@ defmodule Router do
 
   get "/api/text/foo-bar" do
     send_resp(conn, 200, "foo-bar")
+  end
+  
+  post "/api/text/foo-bar" do
+    send_resp(conn, 200, "foo-bar-post")
+  end
+  
+  put "/api/text/foo-bar" do
+    send_resp(conn, 200, "foo-bar-put")
   end
 
   get "/api/echo/:key/:value" do
