@@ -16,7 +16,7 @@ defmodule Rackla do
             hackney_request =
               :hackney.request(
                 Dict.get(request, :method, :get),
-                Dict.get(request, :url),
+                Dict.get(request, :url, ""),
                 Dict.get(request, :headers, %{}) |> Enum.into([]),
                 Dict.get(request, :body, ""),
                 [
@@ -33,8 +33,14 @@ defmodule Rackla do
                     consumer = receive do
                       {pid, :ready} -> pid
                     end
+                    
+                    response = 
+                      if Dict.get(options, :full, false) do
+                        %{status: status, headers: headers |> Enum.into(%{}), body: body}
+                      else 
+                        body
+                      end
 
-                    response = %{status: status, headers: headers |> Enum.into(%{}), body: body}
                     send(consumer, {self, response})
 
                   {:error, atom} ->
@@ -234,23 +240,23 @@ defmodule Rackla do
     %Rackla{producers: p1 ++ p2}
   end
 
-  defmacro response(%Rackla{} = tasks, options \\ []) do
+  defmacro response(tasks, options \\ []) do
     quote do
-      response_conn(unquote(tasks), var!(conn), unquote(options))
+      var!(conn) = response_conn(unquote(tasks), var!(conn), unquote(options))
     end
   end
 
-  def response_conn(%Rackla{producers: producers}, conn, options \\ []) do
-    if Dict.get(options, :compress, false) do
-      response_compressed(producers, conn, options)
+  def response_conn(%Rackla{} = rackla, conn, options \\ []) do
+    if Dict.get(options, :compress, false) || Dict.get(options, :json, false) || Dict.get(options, :sync, false) do
+      response_sync(rackla, conn, options)
     else
-      response_uncompressed(producers, conn, options)
+      response_async(rackla, conn, options)
     end
   end
 
   ### Private ###
 
-  def response_uncompressed(%Rackla{} = producers, conn, options \\ []) do
+  defp response_async(%Rackla{} = producers, conn, options \\ []) do
     unless (conn.state == :chunked) do
       conn =
         conn
@@ -261,26 +267,8 @@ defmodule Rackla do
     prepare_chunks(producers)
     |> send_chunks(conn)
   end
-
-  def send_chunks([], conn), do: conn
-
-  def send_chunks(producers, conn) when is_list(producers) do
-    receive do
-      {producer, thing} ->
-        unless is_binary(thing), do: thing = inspect(thing)
-        case chunk(conn, thing) do
-          {:ok, new_conn} ->
-            send_chunks(List.delete(producers, producer), conn)
-
-          {:error, reason} ->
-            # Todo, kill all producers
-            warn_response(reason)
-            conn
-        end
-    end
-  end
-
-  def prepare_chunks(%Rackla{producers: producers}) do
+  
+  defp prepare_chunks(%Rackla{producers: producers}) do
     Enum.flat_map(producers, fn(producer) ->
       case producer do
         %Rackla{} = nested_producers ->
@@ -293,27 +281,139 @@ defmodule Rackla do
     end)
   end
 
-  def response_compressed(%Rackla{producers: producers}, conn, options \\ []) do
-    compressed_response =
-      Enum.map(collect(producers), fn(response) ->
-        unless is_binary(response), do: response = inspect(response)
-        response
-      end)
-      |> Enum.join
-      |> :zlib.gzip
+  defp send_chunks([], conn), do: conn
 
-    chunk_status =
-      conn
-      |> set_headers(Dict.get(options, :headers, %{}))
-      |> send_chunked(Dict.get(options, :status, 200))
-      |> chunk(compressed_response)
+  defp send_chunks(producers, conn) when is_list(producers) do
+    receive do
+      {message_producer, thing} ->
+        {remaining_producers, current_producer} = 
+          Enum.partition(producers, fn(pid) ->
+            pid != message_producer
+          end)
+        
+        if (current_producer == []) do
+          send_chunks(producers, conn)
+        else
+          case thing do
+            %Rackla{} = nested_rackla ->
+              send_chunks(remaining_producers ++prepare_chunks(nested_rackla), conn)
+            
+            _ ->
+              unless is_binary(thing), do: thing = inspect(thing)
+              
+              case chunk(conn, thing) do
+                {:ok, new_conn} ->
+                  send_chunks(remaining_producers, conn)
 
-    case chunk_status do
-      {:ok, new_conn} ->
-        new_conn
+                {:error, reason} ->
+                  warn_response(reason)
+                  conn
+              end
+          end
+        end
+    end
+  end
+  
+  defp make_json(%Rackla{} = rackla) do
+    response = collect(rackla)
+    
+    cond do
+      is_list(response) ->
+        Enum.map(response, fn(thing) ->
+          case Poison.decode(thing) do
+            {:ok, decoded} -> decoded
+            _ -> thing
+          end
+        end)
+        |> Poison.encode
+      
+      true ->
+        case Poison.decode(response) do
+          {:ok, decoded} -> response
+          true -> Poison.encode(response)
+        end
+    end
+  end
 
+  defp response_sync(%Rackla{} = rackla, conn, options \\ []) do
+    response = collect(rackla)
+    
+    response_encoded =
+      if Dict.get(options, :json, false) do
+        cond do
+          is_list(response) ->
+            Enum.map(response, fn(thing) ->
+              if is_binary(thing) do
+                case Poison.decode(thing) do
+                  {:ok, decoded} -> decoded
+                  _ -> thing
+                end
+              else
+                thing
+              end
+            end)
+            |> Poison.encode
+          
+          true ->
+            if is_binary(response) do
+              case Poison.decode(response) do
+                {:error, _reason} -> Poison.encode(response)
+                {:ok, _decoded} -> {:ok, response}
+              end
+            else
+              Poison.encode(response)
+            end
+        end
+      else
+        cond do
+          is_list(response) ->
+            binary = 
+              Enum.map(response, fn(thing) ->
+                unless is_binary(thing), do: thing = inspect(thing)
+                thing
+              end)
+              |> Enum.join
+            
+            {:ok, binary}
+          
+          is_binary(response) ->
+            {:ok, response}
+            
+          true ->
+            {:ok, inspect(response)}
+        end
+      end
+    
+    case response_encoded do
+      {:ok, response_binary} ->
+        headers = Dict.get(options, :headers, %{})
+        
+        if Dict.get(options, :compress, false) do
+          response_binary = :zlib.gzip(response_binary)
+          headers = Dict.merge(headers, %{"Content-Encoding" => "gzip"})
+        end
+        
+        if Dict.get(options, :json, false) do
+          headers = Dict.merge(headers, %{"Content-Type" => "application/json"})
+        end
+        
+        chunk_status =
+          conn
+          |> set_headers(headers)
+          |> send_chunked(Dict.get(options, :status, 200))
+          |> chunk(response_binary)
+
+        case chunk_status do
+          {:ok, new_conn} ->
+            new_conn
+
+          {:error, reason} ->
+            warn_response(reason)
+            conn
+        end
+      
       {:error, reason} ->
-        warn_response(reason)
+        Logger.error("Response decoding error: #{inspect(reason)}")
         conn
     end
   end

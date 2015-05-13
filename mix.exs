@@ -23,10 +23,10 @@ defmodule Rackla.Mixfile do
 
   defp deps do
     [
-      {:poison, "~> 1.3"},
+      {:poison, "~> 1.4"},
       {:hackney, "~> 1.1"},
       {:cowboy, "~> 1.0"},
-      {:plug, "~> 0.10"},
+      {:plug, "~> 0.12"},
       {:earmark, "~> 0.1", only: :dev},
       {:ex_doc, "~> 0.7", only: :dev}
     ]

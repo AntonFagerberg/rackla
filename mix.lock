@@ -10,7 +10,7 @@
   "idna": {:hex, :idna, "1.0.2"},
   "lager": {:git, "git://github.com/basho/lager.git", "ad400896af5b1ad8b4f7a4d34e609b5a990640bb", [tag: "2.0.1"]},
   "mcd": {:git, "git://github.com/EchoTeam/mcd.git", "4a282234795ecb31f93f59fbaea7940276a0a179", []},
-  "plug": {:hex, :plug, "0.11.3"},
+  "plug": {:hex, :plug, "0.12.2"},
   "poison": {:hex, :poison, "1.4.0"},
   "ranch": {:hex, :ranch, "1.0.0"},
   "ssl_verify_hostname": {:hex, :ssl_verify_hostname, "1.0.4"}}
