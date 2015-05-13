@@ -4,205 +4,194 @@ defmodule Rackla.Tests do
 
   import Rackla
 
-  test "request process" do
-    producer = request("http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar")
-    assert is_pid(producer)
+  test "Rackla.request - single URL" do
+    rackla = request("http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar")
 
-    send(producer, { self, :ready })
+    case rackla do
+      %Rackla{producers: producers} ->
+        Enum.each(producers, fn(producer) ->
+          send(producer, { self, :ready })
 
-    assert_receive { ^producer, :headers, _headers }, 1_000
-    assert_receive { ^producer, :status, _status }, 1_000
-    assert_receive { ^producer, :meta, _meta }, 1_000
-    assert_receive { ^producer, :chunk, _chunks }, 1_000
-    assert_receive { ^producer, :done }, 1_000
+          assert_receive {^producer, _response}, 1_000
+        end)
+
+      other ->
+        flunk "Expected %Rackla from request, got: #{inspect(other)}"
+    end
   end
 
-  test "request process on multiple URIs" do
-    uris = [
+  test "Rackla.request - multiple URLs" do
+    urls = [
       "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar",
       "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
     ]
 
-    producers = request(uris)
-    assert is_list(producers)
-    assert length(producers) == length(uris)
+    rackla = request(urls)
 
-    Enum.each(producers, fn(producer) ->
-      send(producer, { self, :ready })
-      assert_receive { ^producer, :headers, _headers }, 1_000
-      assert_receive { ^producer, :status, _status }, 1_000
-      assert_receive { ^producer, :meta, _meta }, 1_000
-      assert_receive { ^producer, :chunk, _chunks }, 1_000
-      assert_receive { ^producer, :done }, 1_000
-    end)
+    case rackla do
+      %Rackla{producers: producers} ->
+        assert length(producers) == 2
+
+        Enum.each(producers, fn(producer) ->
+          send(producer, { self, :ready })
+
+          assert_receive {^producer, _response}, 1_000
+        end)
+
+      other ->
+        flunk "Expected %Rackla from request, got: #{inspect(other)}"
+    end
   end
 
-  test "collect response to map" do
-    producer = request("http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar")
-    response = collect_response(producer)
-    assert is_map(response)
+  test "Rackla.collect - collect single response" do
+    response_item =
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
+      |> request
+      |> collect
 
-    %Rackla.Response{status: status, headers: headers, body: body, meta: meta, error: error} = response
-    assert is_integer(status)
-    assert is_map(headers)
-    assert is_bitstring(body)
-    assert is_map(meta)
-    assert error == nil
-    
-    assert body == %{foo: "bar"} |> Poison.encode!
+    assert is_map(response_item)
+    assert response_item.status == 200
+    assert response_item.body == "foo-bar"
+    assert is_map(response_item.headers)
+    assert Dict.keys(response_item) |> length == 3
   end
 
-  test "collect response to map on multiple URIs" do
-    uris = [
+  test "Rackla.collect - multiple responses" do
+    urls = [
       "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar",
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar",
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar"
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
     ]
 
-    producers = request(uris)
+    responses =
+      urls
+      |> request
+      |> collect
 
-    assert is_list(producers)
-    assert length(producers) == length(uris)
+    assert is_list(responses)
+    assert length(responses) == length(urls)
 
-    Enum.each(producers, fn(producer) ->
-      response = collect_response(producer)
+    Enum.each(responses, fn(response) ->
       assert is_map(response)
-
-      %Rackla.Response{status: status, headers: headers, body: body, meta: meta, error: error} = response
-      assert is_integer(status)
-      assert is_map(headers)
-      assert is_bitstring(body)
-      assert is_map(meta)
-      assert error == nil
-      
-      assert body == %{foo: "bar"} |> Poison.encode!
+      assert response.status == 200
+      assert is_binary(response.body)
+      assert is_map(response.headers)
+      assert Dict.keys(response) |> length == 3
     end)
   end
-  
-  test "invalid URL" do
-    response = 
-      "invalid-url"
+
+  test "Rackla.collect - multiple deterministic responses" do
+    urls = [
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar",
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
+    ]
+
+    [response_1, response_2] =
+      urls
       |> request
-      |> collect_response
-      
-    assert response.error == :nxdomain
+      |> collect
+
+    assert response_1.body == "{\"foo\":\"bar\"}"
+    assert response_2.body == "foo-bar"
   end
-  
-  test "invalid transform" do
-    response = 
-    "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar"
+
+  test "Rackla.map - single response" do
+    response_item =
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
       |> request
-      |> transform(fn(response) -> Dict.get!(:invalid, response) end)
-      |> collect_response
-      
-    assert response.error == %UndefinedFunctionError{arity: 2, function: :get!, module: Dict, self: false}
+      |> map(&(&1.body))
+      |> collect
+
+    assert is_binary(response_item)
+    assert response_item == "foo-bar"
   end
-  
-  test "transform single function" do
-    error_msg = "custom error"
-    
-    response =
-      "invalid-url"
+
+  test "Rackla.map - mulitple responses" do
+    urls = [
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar",
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar",
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
+    ]
+
+    expected_response =
+      Stream.repeatedly(fn -> "foo-bar" end)
+      |> Stream.take(3)
+      |> Enum.to_list
+
+    response_item =
+      urls
       |> request
-      |> transform(&(Map.update!(&1, :error, fn(_e) -> error_msg end)))
-      |> collect_response
-      
-    assert response.error == error_msg
+      |> map(&(&1.body))
+      |> collect
+
+    assert is_list(response_item)
+    assert response_item == expected_response
   end
-  
-  test "transform multiple functions" do
-    error_msg = "custom error"
-    
-    [response1, response2] =
-      ["invalid-url", "invalid-url2"]
-      |> request
-      |> transform([
-          &(Map.update!(&1, :error, fn(_e) -> error_msg <> "1" end)),
-          &(Map.update!(&1, :error, fn(_e) -> error_msg <> "2" end))
-        ])
-      |> collect_response
-      
-    assert response1.error == error_msg <> "1"
-    assert response2.error == error_msg <> "2"
-  end
-    
-  test "transform list with fewer functions" do
-    error_msg = "custom error"
-    
-    [response1, response2] =
-      ["invalid-url", "invalid-url2"]
-      |> request
-      |> transform([ &(Map.update!(&1, :error, fn(_e) -> error_msg end)) ])
-      |> collect_response
-      
-    assert response1.error == error_msg
-    assert response2.error == :nxdomain
-  end
-  
-  test "transform list with too many functions" do
-    error_msg = "custom error"
-    
-    [response1, response2] =
-      ["invalid-url", "invalid-url2"]
-      |> request
-      |> transform([
-          &(Map.update!(&1, :error, fn(_e) -> error_msg <> "1" end)),
-          &(Map.update!(&1, :error, fn(_e) -> error_msg <> "2" end)),
-          &(Map.update!(&1, :error, fn(_e) -> error_msg <> "3" end))
-        ])
-      |> collect_response
-      
-    assert response1.error == error_msg <> "1"
-    assert response2.error == error_msg <> "2"
-  end
-  
-  test "transform with JSON conversion (string return)" do
-    response = 
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/echo/key/value"
-      |> request
-      |> transform(&(Map.update!(&1, :body, fn(body) -> body["foo"] end)), json: true)
-      |> collect_response
-    
-    assert response.body == "bar"
-  end
-  
-  test "transform with JSON conversion (map return)" do
-    response = 
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/echo/key/value"
-      |> request
-      |> transform(&(Map.update!(&1, :body, fn(body) -> %{ack: body["foo"]} end)), json: true)
-      |> collect_response
-    
-    {status, struct} = Poison.decode(response.body)
-    assert status == :ok
-    assert Map.keys(struct) |> length == 1
-    assert Map.has_key?(struct, "ack")
-    assert struct["ack"] == "bar"
-  end
-  
-  test "transform with JSON conversion (invalid URL)" do
-    response = 
-      "invalid-url"
-      |> request
-      |> transform(&(Map.update!(&1, :body, fn(body) -> %{date: body["date"]} end)), json: true)
-      |> collect_response
-      
-    assert response.error == %Poison.SyntaxError{message: "Unexpected end of input", token: nil}
-  end
-  
-  test "transform with JSON conversion (invalid json)" do
-    response = 
-    "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
-      |> request
-      |> transform(&(Map.update!(&1, :body, fn(body) -> %{date: body["date"]} end)), json: true)
-      |> collect_response
-    
-    is_poison_error = 
-      case response.error do
-        %Poison.SyntaxError{} -> true
-        _ -> false
-      end
-      
-    assert is_poison_error
-  end
+
+  # test "invalid URL" do
+  #   response =
+  #     "invalid-url"
+  #     |> request
+  #     |> collect_response
+  #
+  #   assert response.error == :nxdomain
+  # end
+  #
+  # test "invalid transform" do
+  #   response =
+  #   "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar"
+  #     |> request
+  #     |> transform(fn(response) -> Dict.get!(:invalid, response) end)
+  #     |> collect_response
+  #
+  #   assert response.error == %UndefinedFunctionError{arity: 2, function: :get!, module: Dict, self: false}
+  # end
+  # test "transform with JSON conversion (string return)" do
+  #   response =
+  #     "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/echo/key/value"
+  #     |> request
+  #     |> transform(&(Map.update!(&1, :body, fn(body) -> body["foo"] end)), json: true)
+  #     |> collect_response
+  #
+  #   assert response.body == "bar"
+  # end
+  #
+  # test "transform with JSON conversion (map return)" do
+  #   response =
+  #     "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/echo/key/value"
+  #     |> request
+  #     |> transform(&(Map.update!(&1, :body, fn(body) -> %{ack: body["foo"]} end)), json: true)
+  #     |> collect_response
+  #
+  #   {status, struct} = Poison.decode(response.body)
+  #   assert status == :ok
+  #   assert Map.keys(struct) |> length == 1
+  #   assert Map.has_key?(struct, "ack")
+  #   assert struct["ack"] == "bar"
+  # end
+  #
+  # test "transform with JSON conversion (invalid URL)" do
+  #   response =
+  #     "invalid-url"
+  #     |> request
+  #     |> transform(&(Map.update!(&1, :body, fn(body) -> %{date: body["date"]} end)), json: true)
+  #     |> collect_response
+  #
+  #   assert response.error == %Poison.SyntaxError{message: "Unexpected end of input", token: nil}
+  # end
+  #
+  # test "transform with JSON conversion (invalid json)" do
+  #   response =
+  #   "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
+  #     |> request
+  #     |> transform(&(Map.update!(&1, :body, fn(body) -> %{date: body["date"]} end)), json: true)
+  #     |> collect_response
+  #
+  #   is_poison_error =
+  #     case response.error do
+  #       %Poison.SyntaxError{} -> true
+  #       _ -> false
+  #     end
+  #
+  #   assert is_poison_error
+  # end
 end
