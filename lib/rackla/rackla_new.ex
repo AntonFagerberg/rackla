@@ -71,6 +71,12 @@ defmodule Rackla do
 
     %Rackla{producers: [producers]}
   end
+  
+  def just_list(things) when is_list(things) do
+    things
+    |> Enum.map(&just/1)
+    |> Enum.reduce(&join/2)
+  end
 
   def map(%Rackla{producers: producers}, fun) when is_function(fun, 1) do
     new_producers =

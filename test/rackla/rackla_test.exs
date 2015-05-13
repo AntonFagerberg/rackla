@@ -218,6 +218,26 @@ defmodule Rackla.Tests do
     assert is_binary(response_item)
     assert response_item == expected_response
   end
+  
+  test "Rackla.reduce - numeric" do
+    reduce_function = 
+      fn(x, acc) ->
+        x + acc
+      end
+      
+    input = [1, 2, 3, 4, 5]
+      
+    response_item = 
+      input
+      |> just_list
+      |> reduce(reduce_function)
+      |> collect
+      
+    expected_response = Enum.reduce(input, reduce_function)
+
+    assert is_number(response_item)
+    assert response_item == expected_response
+  end
 
   # test "invalid URL" do
   #   response =
