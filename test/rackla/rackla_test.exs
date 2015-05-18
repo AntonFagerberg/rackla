@@ -50,7 +50,7 @@ defmodule Rackla.Tests do
   test "Rackla.collect - collect single response" do
     response_item =
       "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
-      |> request
+      |> request(full: true)
       |> collect
 
     assert is_map(response_item)
@@ -63,7 +63,7 @@ defmodule Rackla.Tests do
   test "Rackla.collect - collect single response (PUT)" do
     response_item =
       %{method: :put, url: "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"}
-      |> request
+      |> request(full: true)
       |> collect
 
     assert is_map(response_item)
@@ -76,7 +76,7 @@ defmodule Rackla.Tests do
   test "Rackla.collect - collect single response (POST)" do
     response_item =
       %{method: :post, url: "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"}
-      |> request
+      |> request(full: true)
       |> collect
 
     assert is_map(response_item)
@@ -94,7 +94,7 @@ defmodule Rackla.Tests do
 
     responses =
       urls
-      |> request
+      |> request(full: true)
       |> collect
 
     assert is_list(responses)
@@ -109,7 +109,7 @@ defmodule Rackla.Tests do
     end)
   end
 
-  test "Rackla.collect - multiple deterministic responses" do
+  test "Rackla.collect - multiple deterministic responses (full: false)" do
     urls = [
       "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar",
       "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
@@ -120,6 +120,21 @@ defmodule Rackla.Tests do
       |> request
       |> collect
 
+    assert response_1 == "{\"foo\":\"bar\"}"
+    assert response_2 == "foo-bar"
+  end
+
+  test "Rackla.collect - multiple deterministic responses (full: true)" do
+    urls = [
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar",
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
+    ]
+
+    [response_1, response_2] =
+      urls
+      |> request(full: true)
+      |> collect
+
     assert response_1.body == "{\"foo\":\"bar\"}"
     assert response_2.body == "foo-bar"
   end
@@ -127,7 +142,7 @@ defmodule Rackla.Tests do
   test "Rackla.map - single response" do
     response_item =
       "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
-      |> request
+      |> request(full: true)
       |> map(&(&1.body))
       |> collect
 
@@ -149,7 +164,7 @@ defmodule Rackla.Tests do
 
     response_item =
       urls
-      |> request
+      |> request(full: true)
       |> map(&(&1.body))
       |> collect
 
@@ -162,7 +177,7 @@ defmodule Rackla.Tests do
       "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar"
       |> request
       |> flat_map(fn(_) ->
-        request("http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar")
+        request("http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar", full: true)
       end)
       |> map(&(&1.body))
       |> collect
@@ -181,7 +196,7 @@ defmodule Rackla.Tests do
       |> flat_map(fn(_) ->
         request([url_1, url_1])
         |> flat_map(fn(_) ->
-          request([url_2, url_2, url_2])
+          request([url_2, url_2, url_2], full: true)
         end)
       end)
       |> map(&(&1.body))
@@ -208,7 +223,6 @@ defmodule Rackla.Tests do
     response_item = 
       [url, url, url]
       |> request
-      |> map(&(&1.body))
       |> reduce(reduce_function)
       |> collect
       
@@ -235,7 +249,6 @@ defmodule Rackla.Tests do
     response_item = 
       [url, url, url]
       |> request
-      |> map(&(&1.body))
       |> reduce(accumulator, reduce_function)
       |> collect
       
@@ -286,7 +299,7 @@ defmodule Rackla.Tests do
     
     [response_1, response_2] =
       urls
-      |> request
+      |> request(full: true)
       |> collect
     
     assert is_map(response_1)
@@ -306,7 +319,7 @@ defmodule Rackla.Tests do
     
     [response_1, response_2] =
       urls
-      |> request
+      |> request(full: true)
       |> map(fn(response) ->
         case response do
           {:error, term} -> term
@@ -328,7 +341,7 @@ defmodule Rackla.Tests do
     [response_1, response_2] =
       just("test")
       |> flat_map(fn(_) ->
-        request(urls)
+        request(urls, full: true)
       end)
       |> map(fn(response) ->
         case response do
@@ -351,7 +364,7 @@ defmodule Rackla.Tests do
     [response_1, response_2] =
       just("test")
       |> flat_map(fn(_) ->
-        request(urls)
+        request(urls, full: true)
         |> map(fn(response) ->
           case response do
             {:error, term} -> term
@@ -392,7 +405,7 @@ defmodule Rackla.Tests do
     assert response_item == {:error, %MatchError{term: "not a Rackla struct"}}
   end
   
-  test "Rackla.map - raising exceptions" do
+  test "Rackla.flat_map - raising exceptions" do
     response_item = 
       just("test")
       |> flat_map(fn(_) -> raise "ops" end)
