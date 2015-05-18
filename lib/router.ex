@@ -47,21 +47,14 @@ defmodule Router do
   end
   
   get "/temperature" do
-    uris =
-      String.split(conn.query_string, "|")
-      |> Enum.map(&("http://api.openweathermap.org/data/2.5/weather?q=#{&1}"))
-  
-    temperature_extractor = fn(item) ->
-      case Poison.decode(item) do
-        {:ok, response_body} ->
-          Map.put(%{}, response_body["name"], response_body["main"]["temp"])
-        
-        {:error, _} ->
-          item
-      end
+    temperature_extractor = fn(weather_response) ->
+      json_decoded = Poison.decode(weather_response)
+      Map.put(%{}, json_decoded["name"], json_decoded["main"]["temp"])
     end
-  
-    uris
+
+    conn.query_string
+    |> String.split("|")
+    |> Enum.map(&("http://api.openweathermap.org/data/2.5/weather?q=#{&1}"))
     |> request
     |> map(temperature_extractor)
     |> response(json: true, compress: true)
