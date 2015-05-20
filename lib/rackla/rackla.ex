@@ -22,9 +22,9 @@ defmodule Rackla do
                 Map.get(request, :headers, %{}) |> Enum.into([]),
                 Map.get(request, :body, ""),
                 [
-                  insecure: Map.get(options, :insecure, false),
-                  connect_timeout: Map.get(options, :connect_timeout, 5_000),
-                  recv_timeout: Map.get(options, :receive_timeout, 5_000)
+                  insecure: Dict.get(options, :insecure, false),
+                  connect_timeout: Dict.get(options, :connect_timeout, 5_000),
+                  recv_timeout: Dict.get(options, :receive_timeout, 5_000)
                 ]
               )
 
