@@ -332,6 +332,24 @@ defmodule Rackla.Tests do
     assert response_2 == :nxdomain
   end
   
+  test "Rackla.map - nested Rackla type should not be unpacked" do
+    expected = "hello"
+    
+    rackla =
+      "discard this"
+      |> just
+      |> map(fn(_) ->
+        just(expected)
+      end)
+      |> collect
+    
+    case rackla do
+      %Rackla{} = nested_rackla -> 
+        assert collect(nested_rackla) == expected
+      _ -> flunk "Expected Rackla type, got: #{rackla}"
+    end
+  end
+  
   test "Rackla.flat_map - valid and invalid URL (variation 1)" do
     urls = [
       "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar",

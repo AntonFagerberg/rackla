@@ -41,7 +41,7 @@ defmodule Rackla do
                         body
                       end
 
-                    send(consumer, {self, response})
+                    send(consumer, {self, {:ok, response}})
 
                   {:error, atom} ->
                     warn_request(:closed)
@@ -72,7 +72,7 @@ defmodule Rackla do
           {pid, :ready} -> pid
         end
 
-        send(consumer, {self, thing})
+        send(consumer, {self, {:ok, thing}})
       end)
 
     %Rackla{producers: [producers]}
@@ -94,11 +94,14 @@ defmodule Rackla do
 
               response =
                 receive do
-                  {^producer, %Rackla{} = nested_producers} ->
-                    responses = map(nested_producers, fun)
+                  {^producer, {:rackla, nested_producers}} ->
+                    {:rackla, map(nested_producers, fun)}
 
-                  {^producer, thing} ->
-                    response = fun.(thing)
+                  {^producer, {:ok, thing}} ->
+                    {:ok, fun.(thing)}
+                
+                  {^producer, error} ->
+                    {:ok, fun.(error)}
                 end
 
               consumer = receive do
@@ -132,18 +135,21 @@ defmodule Rackla do
             try do
               send(producer, {self, :ready})
 
-              %Rackla{} = new_producers =
+              %Rackla{} = new_rackla =
                 receive do
-                  {^producer, %Rackla{} = nested_producers} ->
-                    flat_map(nested_producers, fun)
-
-                  {^producer, thing} ->
+                  {^producer, {:rackla, nested_rackla}} ->
+                    flat_map(nested_rackla, fun)
+                  
+                  {^producer, {:ok, thing}} ->
                     fun.(thing)
+                    
+                  {^producer, error} ->
+                    fun.(error)
                 end
                 
               receive do
                 {consumer, :ready} ->
-                  send(consumer, {self, new_producers})
+                  send(consumer, {self, {:rackla, new_rackla}})
               end
             rescue
               exception ->
@@ -165,10 +171,10 @@ defmodule Rackla do
   def reduce(%Rackla{} = rackla, fun) when is_function(fun, 2) do
     {:ok, new_producer} =
       Task.start_link(fn ->
-        response = reduce_recursive(rackla, fun)
+        thing = reduce_recursive(rackla, fun)
         
         receive do
-          {consumer, :ready} -> send(consumer, {self, response})
+          {consumer, :ready} -> send(consumer, {self, {:ok, thing}})
         end
       end)
       
@@ -178,10 +184,10 @@ defmodule Rackla do
   def reduce(%Rackla{} = rackla, acc, fun) when is_function(fun, 2) do
     {:ok, new_producer} =
       Task.start_link(fn ->
-        response = reduce_recursive(rackla, acc, fun)
+        thing = reduce_recursive(rackla, acc, fun)
         
         receive do
-          {consumer, :ready} -> send(consumer, {self, response})
+          {consumer, :ready} -> send(consumer, {self, {:ok, thing}})
         end
       end)
       
@@ -194,10 +200,14 @@ defmodule Rackla do
     
     acc =
       receive do
-        {^producer, %Rackla{} = nested_producers} ->
-          reduce(nested_producers, fun)
-        
-        {^producer, thing} -> thing
+        {^producer, {:rackla, nested_producers}} ->
+          reduce_recursive(nested_producers, fun)
+          
+        {^producer, {:ok, thing}} -> 
+          thing
+
+        {^producer, error} -> 
+          error
       end
 
     reduce_recursive(%Rackla{producers: tail_producers}, acc, fun)
@@ -208,11 +218,14 @@ defmodule Rackla do
       send(producer, {self, :ready})
       
       receive do
-        {^producer, %Rackla{} = nested_producers} ->
+        {^producer, {:rackla, nested_producers}} ->
           reduce_recursive(nested_producers, acc, fun)
           
-        {^producer, thing} ->
+        {^producer, {:ok, thing}} ->
           fun.(thing, acc)
+          
+        {^producer, error} ->
+          fun.(error, acc)
       end
     end)
   end
@@ -227,11 +240,14 @@ defmodule Rackla do
       send(producer, {self, :ready})
 
       receive do
-        {^producer, %Rackla{} = nested_producers} ->
-          collect_recursive(nested_producers)
+        {^producer, {:rackla, nested_rackla}} ->
+          collect_recursive(nested_rackla)
 
-        {^producer, response} ->
-          [response]
+        {^producer, {:ok, thing}} ->
+          [thing]
+          
+        {^producer, error} ->
+          [error]
       end
     end)
   end
@@ -284,6 +300,19 @@ defmodule Rackla do
   defp send_chunks([], conn), do: conn
 
   defp send_chunks(producers, conn) when is_list(producers) do
+    send_thing = fn(thing, remaining_producers, conn) ->
+      unless is_binary(thing), do: thing = inspect(thing)
+      
+      case chunk(conn, thing) do
+        {:ok, new_conn} ->
+          send_chunks(remaining_producers, conn)
+
+        {:error, reason} ->
+          warn_response(reason)
+          conn
+      end
+    end
+    
     receive do
       {message_producer, thing} ->
         {remaining_producers, current_producer} = 
@@ -295,20 +324,14 @@ defmodule Rackla do
           send_chunks(producers, conn)
         else
           case thing do
-            %Rackla{} = nested_rackla ->
-              send_chunks(remaining_producers ++prepare_chunks(nested_rackla), conn)
+            {:rackla, nested_rackla} ->
+              send_chunks(remaining_producers ++ prepare_chunks(nested_rackla), conn)
             
-            _ ->
-              unless is_binary(thing), do: thing = inspect(thing)
+            {:ok, thing} ->
+              send_thing.(thing, remaining_producers, conn)
               
-              case chunk(conn, thing) do
-                {:ok, new_conn} ->
-                  send_chunks(remaining_producers, conn)
-
-                {:error, reason} ->
-                  warn_response(reason)
-                  conn
-              end
+            {error} ->
+              send_thing.(error, remaining_producers, conn)
           end
         end
     end
