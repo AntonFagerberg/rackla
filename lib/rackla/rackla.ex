@@ -68,7 +68,6 @@ defmodule Rackla do
   end
 
   @spec just(any | [any]) :: t
-  
   def just(thing) do
     {:ok, producers} =
       Task.start_link(fn ->
@@ -82,6 +81,7 @@ defmodule Rackla do
     %Rackla{producers: [producers]}
   end
   
+  @spec just_list([any]) :: t
   def just_list(things) when is_list(things) do
     things
     |> Enum.map(&just/1)
@@ -201,6 +201,7 @@ defmodule Rackla do
     %Rackla{producers: [new_producer]}
   end
   
+  @spec reduce_recursive(t, (any, any -> any)) :: any
   defp reduce_recursive(%Rackla{producers: producers}, fun) do
     [producer | tail_producers] = producers
     send(producer, {self, :ready})
@@ -220,6 +221,7 @@ defmodule Rackla do
     reduce_recursive(%Rackla{producers: tail_producers}, acc, fun)
   end
   
+  @spec reduce_recursive(t, any, (any, any -> any)) :: any
   defp reduce_recursive(%Rackla{producers: producers}, acc, fun) do
     Enum.reduce(producers, acc, fn(producer, acc) ->
       send(producer, {self, :ready})
@@ -237,7 +239,7 @@ defmodule Rackla do
     end)
   end
 
-  @spec collect(t, Dict.t) :: any
+  @spec collect(t, Dict.t) :: [any] | any
   def collect(%Rackla{} = rackla, options \\ []) do
     [single_response | rest] = all_responses = collect_recursive(rackla)
     if rest == [], do: single_response, else: all_responses
@@ -271,6 +273,7 @@ defmodule Rackla do
     end
   end
 
+  @spec response_conn(t, Plug.Conn.t, Dict.t) :: Plug.Conn.t
   def response_conn(%Rackla{} = rackla, conn, options \\ []) do
     if Dict.get(options, :compress, false) || Dict.get(options, :json, false) || Dict.get(options, :sync, false) do
       response_sync(rackla, conn, options)
@@ -279,6 +282,7 @@ defmodule Rackla do
     end
   end
 
+  @spec response_async(t, Plug.Conn.t, Dict.t) :: Plug.Conn.t
   defp response_async(%Rackla{} = producers, conn, options \\ []) do
     unless (conn.state == :chunked) do
       conn =
@@ -291,6 +295,7 @@ defmodule Rackla do
     |> send_chunks(conn)
   end
   
+  @spec prepare_chunks(t) :: [pid] 
   defp prepare_chunks(%Rackla{producers: producers}) do
     Enum.flat_map(producers, fn(producer) ->
       case producer do
@@ -304,6 +309,7 @@ defmodule Rackla do
     end)
   end
 
+  @spec send_chunks([pid], Plug.Conn.t) :: Plug.Conn.t
   defp send_chunks([], conn), do: conn
 
   defp send_chunks(producers, conn) when is_list(producers) do
@@ -343,28 +349,8 @@ defmodule Rackla do
         end
     end
   end
-  
-  defp make_json(%Rackla{} = rackla) do
-    response = collect(rackla)
-    
-    cond do
-      is_list(response) ->
-        Enum.map(response, fn(thing) ->
-          case Poison.decode(thing) do
-            {:ok, decoded} -> decoded
-            _ -> thing
-          end
-        end)
-        |> Poison.encode
-      
-      true ->
-        case Poison.decode(response) do
-          {:ok, decoded} -> response
-          true -> Poison.encode(response)
-        end
-    end
-  end
 
+  @spec response_sync(t, Plug.Conn.t, Dict.t) :: Plug.Conn.t
   defp response_sync(%Rackla{} = rackla, conn, options \\ []) do
     response = collect(rackla)
     
