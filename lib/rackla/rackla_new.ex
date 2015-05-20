@@ -2,27 +2,29 @@ defmodule Rackla do
   import Plug.Conn
   require Logger
 
+  @type t :: %__MODULE__{producers: [pid | t]}
   defstruct producers: []
-
+  
+  @spec request(String.t | Rackla.Request.t | [String.t] | [Rackla.Request.t], Dict.t) :: t
   def request(requests, options \\ [])
 
   def request(requests, options) when is_list(requests) do
     producers =
       Enum.map(requests, fn(request) ->
-        if is_binary(request), do: request = [url: request]
+        if is_binary(request), do: request = %Rackla.Request{url: request}
 
         {:ok, producer} =
           Task.start_link(fn ->
             hackney_request =
               :hackney.request(
-                Dict.get(request, :method, :get),
-                Dict.get(request, :url, ""),
-                Dict.get(request, :headers, %{}) |> Enum.into([]),
-                Dict.get(request, :body, ""),
+                Map.get(request, :method, :get),
+                Map.get(request, :url, ""),
+                Map.get(request, :headers, %{}) |> Enum.into([]),
+                Map.get(request, :body, ""),
                 [
-                  insecure: Dict.get(options, :insecure, false),
-                  connect_timeout: Dict.get(options, :connect_timeout, 5_000),
-                  recv_timeout: Dict.get(options, :receive_timeout, 5_000)
+                  insecure: Map.get(options, :insecure, false),
+                  connect_timeout: Map.get(options, :connect_timeout, 5_000),
+                  recv_timeout: Map.get(options, :receive_timeout, 5_000)
                 ]
               )
 
@@ -65,6 +67,8 @@ defmodule Rackla do
     request([request], options)
   end
 
+  @spec just(any | [any]) :: t
+  
   def just(thing) do
     {:ok, producers} =
       Task.start_link(fn ->
@@ -84,6 +88,7 @@ defmodule Rackla do
     |> Enum.reduce(&join/2)
   end
 
+  @spec map(t, (any -> any)) :: t
   def map(%Rackla{producers: producers}, fun) when is_function(fun, 1) do
     new_producers =
       Enum.map(producers, fn(producer) ->
@@ -127,6 +132,7 @@ defmodule Rackla do
     %Rackla{producers: new_producers}
   end
 
+  @spec flat_map(t, (any -> t)) :: t
   def flat_map(%Rackla{producers: producers}, fun) do
     new_producers =
       Enum.map(producers, fn(producer) ->
@@ -168,6 +174,7 @@ defmodule Rackla do
     %Rackla{producers: new_producers}
   end
 
+  @spec reduce(t, (any, any -> any)) :: t
   def reduce(%Rackla{} = rackla, fun) when is_function(fun, 2) do
     {:ok, new_producer} =
       Task.start_link(fn ->
@@ -230,6 +237,7 @@ defmodule Rackla do
     end)
   end
 
+  @spec collect(t, Dict.t) :: any
   def collect(%Rackla{} = rackla, options \\ []) do
     [single_response | rest] = all_responses = collect_recursive(rackla)
     if rest == [], do: single_response, else: all_responses
@@ -252,6 +260,7 @@ defmodule Rackla do
     end)
   end
 
+  @spec join(t, t) :: t
   def join(%Rackla{producers: p1}, %Rackla{producers: p2}) do
     %Rackla{producers: p1 ++ p2}
   end
@@ -269,8 +278,6 @@ defmodule Rackla do
       response_async(rackla, conn, options)
     end
   end
-
-  ### Private ###
 
   defp response_async(%Rackla{} = producers, conn, options \\ []) do
     unless (conn.state == :chunked) do

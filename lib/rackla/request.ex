@@ -1,4 +1,14 @@
 defmodule Rackla.Request do
-  defstruct method: :get, url: nil, headers: %{}, body: "", options: %{}, meta: %{}
-  @type t :: %Rackla.Request{method: atom, url: binary, headers: %{}, body: binary, options: %{}, meta: %{}}
+  @type t :: %__MODULE__{
+              method:   atom, 
+              url:      binary, 
+              headers:  %{}, 
+              body:     binary, 
+              options:  %{}}
+  
+  defstruct method:   :get, 
+            url:      "", 
+            headers:  %{}, 
+            body:     "", 
+            options:  %{}
 end
