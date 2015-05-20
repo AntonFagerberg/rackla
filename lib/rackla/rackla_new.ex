@@ -439,6 +439,15 @@ end
 
 defimpl Inspect, for: Rackla do
   import Inspect.Algebra
+  
+  defp count(producers) do
+    Enum.reduce(producers, 0, fn(item, acc) ->
+      case item do
+        %Rackla{producers: producers} -> count(producers)
+        _ -> acc + 1
+      end
+    end)
+  end
 
   def inspect(rackla, opts) do
     concat ["#Rackla<#{length(rackla.producers)}>"]
