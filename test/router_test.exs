@@ -57,7 +57,7 @@ defmodule RouterTest do
     assert conn.resp_body == "foo-barok"
   end
 
-  test "Proxy - multi async" do
+  test "Proxy - multi sync" do
     conn =
       :get
       |> conn("/test/proxy/multi/sync?http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/timeout|http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar")
