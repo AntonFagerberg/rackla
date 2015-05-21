@@ -1,6 +1,6 @@
 defmodule TestRouter do
   @moduledoc false
-  
+
   use Plug.Router
   import Rackla
 
@@ -69,10 +69,6 @@ defmodule TestRouter do
   get "/api/json/no-header/foo-bar" do
     json = Poison.encode!(%{foo: "bar"})
     send_resp(conn, 200, json)
-  end
-
-  get "/api/text/foo-bar" do
-    send_resp(conn, 200, "foo-bar")
   end
 
   get "/api/text/foo-bar" do
