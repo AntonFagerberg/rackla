@@ -440,14 +440,17 @@ defmodule Rackla do
     end
   end
 
+  @spec set_headers(Plug.Conn.t, Dict.t) :: Plug.Conn.t
   defp set_headers(conn, headers) do
     Enum.reduce(headers, conn, fn({key, value}, conn) ->
       put_resp_header(conn, key, value)
     end)
   end
 
+  @spec warn_response(any) :: :ok
   defp warn_response(reason), do: Logger.error("HTTP response error: #{inspect(reason)}")
 
+  @spec warn_request(any) :: :ok
   defp warn_request(reason) do
     Logger.warn("HTTP request error: #{inspect(reason)}")
 
@@ -456,6 +459,8 @@ defmodule Rackla do
     end
 
     send(consumer, {self, {:error, reason}})
+
+    :ok
   end
 end
 
