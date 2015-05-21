@@ -99,36 +99,25 @@ defmodule Rackla do
       Enum.map(producers, fn(producer) ->
         {:ok, new_producer} =
           Task.start_link(fn ->
-            try do
-              send(producer, {self, :ready})
+            send(producer, {self, :ready})
 
-              response =
-                receive do
-                  {^producer, {:rackla, nested_producers}} ->
-                    {:rackla, map(nested_producers, fun)}
+            response =
+              receive do
+                {^producer, {:rackla, nested_producers}} ->
+                  {:rackla, map(nested_producers, fun)}
 
-                  {^producer, {:ok, thing}} ->
-                    {:ok, fun.(thing)}
+                {^producer, {:ok, thing}} ->
+                  {:ok, fun.(thing)}
 
-                  {^producer, error} ->
-                    {:ok, fun.(error)}
-                end
-
-              consumer = receive do
-                {pid, :ready} -> pid
+                {^producer, error} ->
+                  {:ok, fun.(error)}
               end
 
-              send(consumer, {self, response})
-            rescue
-              exception ->
-                Logger.warn("Exception raised in map: #{inspect(exception)}.")
-
-                consumer = receive do
-                  {pid, :ready} -> pid
-                end
-
-                send(consumer, {self, {:error, exception}})
+            consumer = receive do
+              {pid, :ready} -> pid
             end
+
+            send(consumer, {self, response})
           end)
 
         new_producer
@@ -143,33 +132,23 @@ defmodule Rackla do
       Enum.map(producers, fn(producer) ->
         {:ok, new_producer} =
           Task.start_link(fn ->
-            try do
-              send(producer, {self, :ready})
+            send(producer, {self, :ready})
 
-              %Rackla{} = new_rackla =
-                receive do
-                  {^producer, {:rackla, nested_rackla}} ->
-                    flat_map(nested_rackla, fun)
-
-                  {^producer, {:ok, thing}} ->
-                    fun.(thing)
-
-                  {^producer, error} ->
-                    fun.(error)
-                end
-
+            %Rackla{} = new_rackla =
               receive do
-                {consumer, :ready} ->
-                  send(consumer, {self, {:rackla, new_rackla}})
-              end
-            rescue
-              exception ->
-                Logger.warn("Exception raised in flat_map: #{inspect(exception)}.")
+                {^producer, {:rackla, nested_rackla}} ->
+                  flat_map(nested_rackla, fun)
 
-                receive do
-                  {consumer, :ready} ->
-                    send(consumer, {self, {:error, exception}})
-                end
+                {^producer, {:ok, thing}} ->
+                  fun.(thing)
+
+                {^producer, error} ->
+                  fun.(error)
+              end
+
+            receive do
+              {consumer, :ready} ->
+                send(consumer, {self, {:rackla, new_rackla}})
             end
           end)
 

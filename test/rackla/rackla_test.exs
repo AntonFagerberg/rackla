@@ -1,8 +1,9 @@
 defmodule Rackla.Tests do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   use Plug.Test
 
   import Rackla
+  import ExUnit.CaptureIO
 
   @test_router_port 4444
   Plug.Adapters.Cowboy.http(TestRouter, [], port: @test_router_port)
@@ -406,48 +407,78 @@ defmodule Rackla.Tests do
   end
 
   test "Rackla.map - raising exceptions" do
-    response_item =
-      just("test")
-      |> map(fn(_) -> raise "ops" end)
-      |> collect
+    capture_io(:user, fn ->
+      Process.flag(:trap_exit, true)
 
-    assert response_item == {:error, %RuntimeError{message: "ops"}}
+      Task.start_link(fn ->
+        just("test")
+        |> map(fn(_) -> raise "oops" end)
+        |> collect
+      end)
+
+      assert_receive {:EXIT, pid, {%RuntimeError{message: "oops"}, _rest}}, 5_000
+      Logger.flush()
+    end)
   end
 
   test "Rackla.map - arithmetic error" do
-    response_item =
-      just("test")
-      |> map(fn(_) -> 1/0 end)
-      |> collect
+    capture_io(:user, fn ->
+      Process.flag(:trap_exit, true)
 
-    assert response_item == {:error, %ArithmeticError{}}
+      Task.start_link(fn ->
+        just("test")
+        |> map(fn(_) -> 1/0 end)
+        |> collect
+      end)
+
+      assert_receive {:EXIT, _pid, {:badarith, _rest}}, 1_000
+      Logger.flush()
+    end)
   end
 
   test "Rackla.flat_map - wrong return type" do
-    response_item =
-      just("test")
-      |> flat_map(fn(_) -> "not a Rackla struct" end)
-      |> collect
+    capture_io(:user, fn ->
+      Process.flag(:trap_exit, true)
 
-    assert response_item == {:error, %MatchError{term: "not a Rackla struct"}}
+      Task.start_link(fn ->
+        just("test")
+        |> flat_map(fn(_) -> "not a Rackla struct" end)
+        |> collect
+      end)
+
+      assert_receive {:EXIT, _pid, {{:badmatch, _msg}, _rest}}, 1_000
+      Logger.flush()
+    end)
   end
 
   test "Rackla.flat_map - raising exceptions" do
-    response_item =
-      just("test")
-      |> flat_map(fn(_) -> raise "ops" end)
-      |> collect
+    capture_io(:user, fn ->
+      Process.flag(:trap_exit, true)
 
-    assert response_item == {:error, %RuntimeError{message: "ops"}}
+      Task.start_link(fn ->
+        just("test")
+        |> flat_map(fn(_) -> raise "oops" end)
+        |> collect
+      end)
+
+      assert_receive {:EXIT, pid, {%RuntimeError{message: "oops"}, _rest}}, 5_000
+      Logger.flush()
+    end)
   end
 
   test "Rackla.flat_map - arithmetic error" do
-    response_item =
-      just("test")
-      |> flat_map(fn(_) -> 1/0 end)
-      |> collect
+    capture_io(:user, fn ->
+      Process.flag(:trap_exit, true)
 
-    assert response_item == {:error, %ArithmeticError{}}
+      Task.start_link(fn ->
+        just("test")
+        |> flat_map(fn(_) -> 1/0 end)
+        |> collect
+      end)
+
+      assert_receive {:EXIT, _pid, {:badarith, _rest}}, 1_000
+      Logger.flush()
+    end)
   end
 
   test "Timeout - receive_timeout is too short" do
