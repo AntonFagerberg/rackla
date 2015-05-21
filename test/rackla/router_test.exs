@@ -1,14 +1,17 @@
-defmodule RouterTest do
+defmodule Rackla.RouterTest do
   use ExUnit.Case, async: true
   use Plug.Test
 
-  @opts Router.init([])
+  @opts TestRouter.init([])
+
+  @test_router_port 4444
+  Plug.Adapters.Cowboy.http(TestRouter, [], port: @test_router_port)
 
   test "Proxy" do
     conn =
       :get
-      |> conn("/test/proxy?http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar")
-      |> Router.call(@opts)
+      |> conn("/test/proxy?http://localhost:#{@test_router_port}/api/text/foo-bar")
+      |> TestRouter.call(@opts)
 
     assert conn.state == :chunked
     assert conn.status == 200
@@ -20,8 +23,8 @@ defmodule RouterTest do
   test "Proxy - set status" do
     conn =
       :get
-      |> conn("/test/proxy/404?http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar")
-      |> Router.call(@opts)
+      |> conn("/test/proxy/404?http://localhost:#{@test_router_port}/api/text/foo-bar")
+      |> TestRouter.call(@opts)
 
     assert conn.state == :chunked
     assert conn.status == 404
@@ -33,8 +36,8 @@ defmodule RouterTest do
   test "Proxy - set headers" do
     conn =
       :get
-      |> conn("/test/proxy/set-headers?http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar")
-      |> Router.call(@opts)
+      |> conn("/test/proxy/set-headers?http://localhost:#{@test_router_port}/api/text/foo-bar")
+      |> TestRouter.call(@opts)
 
       assert conn.state == :chunked
       assert conn.status == 200
@@ -47,8 +50,8 @@ defmodule RouterTest do
   test "Proxy - multi async" do
     conn =
       :get
-      |> conn("/test/proxy/multi?http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/timeout|http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar")
-      |> Router.call(@opts)
+      |> conn("/test/proxy/multi?http://localhost:#{@test_router_port}/api/timeout|http://localhost:#{@test_router_port}/api/text/foo-bar")
+      |> TestRouter.call(@opts)
 
     assert conn.state == :chunked
     assert conn.status == 200
@@ -60,8 +63,8 @@ defmodule RouterTest do
   test "Proxy - multi sync" do
     conn =
       :get
-      |> conn("/test/proxy/multi/sync?http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/timeout|http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar")
-      |> Router.call(@opts)
+      |> conn("/test/proxy/multi/sync?http://localhost:#{@test_router_port}/api/timeout|http://localhost:#{@test_router_port}/api/text/foo-bar")
+      |> TestRouter.call(@opts)
 
     assert conn.state == :chunked
     assert conn.status == 200
@@ -72,8 +75,8 @@ defmodule RouterTest do
   test "Proxy with compression" do
     conn =
       :get
-      |> conn("/test/proxy/gzip?http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar")
-      |> Router.call(@opts)
+      |> conn("/test/proxy/gzip?http://localhost:#{@test_router_port}/api/text/foo-bar")
+      |> TestRouter.call(@opts)
 
     assert conn.state == :chunked
     assert conn.status == 200
@@ -87,7 +90,7 @@ defmodule RouterTest do
     conn =
       :get
       |> conn("/test/json")
-      |> Router.call(@opts)
+      |> TestRouter.call(@opts)
 
     assert conn.state == :chunked
     assert conn.status == 200
@@ -101,7 +104,7 @@ defmodule RouterTest do
     conn =
       :get
       |> conn("/test/json/multi")
-      |> Router.call(@opts)
+      |> TestRouter.call(@opts)
 
     assert conn.state == :chunked
     assert conn.status == 200

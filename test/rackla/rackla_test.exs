@@ -4,8 +4,11 @@ defmodule Rackla.Tests do
 
   import Rackla
 
+  @test_router_port 4444
+  Plug.Adapters.Cowboy.http(TestRouter, [], port: @test_router_port)
+
   test "Rackla.request - single URL" do
-    rackla = request("http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar")
+    rackla = request("http://localhost:#{@test_router_port}/api/text/foo-bar")
 
     case rackla do
       %Rackla{producers: producers} ->
@@ -22,8 +25,8 @@ defmodule Rackla.Tests do
 
   test "Rackla.request - multiple URLs" do
     urls = [
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar",
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
+      "http://localhost:#{@test_router_port}/api/json/foo-bar",
+      "http://localhost:#{@test_router_port}/api/text/foo-bar"
     ]
 
     rackla = request(urls)
@@ -45,7 +48,7 @@ defmodule Rackla.Tests do
 
   test "Rackla.collect - collect single response" do
     response_item =
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
+      "http://localhost:#{@test_router_port}/api/text/foo-bar"
       |> request(full: true)
       |> collect
 
@@ -60,7 +63,7 @@ defmodule Rackla.Tests do
 
   test "Rackla.collect - collect single response (PUT)" do
     response_item =
-      %{method: :put, url: "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"}
+      %{method: :put, url: "http://localhost:#{@test_router_port}/api/text/foo-bar"}
       |> request(full: true)
       |> collect
 
@@ -75,7 +78,7 @@ defmodule Rackla.Tests do
 
   test "Rackla.collect - collect single response (POST)" do
     response_item =
-      %{method: :post, url: "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"}
+      %{method: :post, url: "http://localhost:#{@test_router_port}/api/text/foo-bar"}
       |> request(full: true)
       |> collect
 
@@ -90,8 +93,8 @@ defmodule Rackla.Tests do
 
   test "Rackla.collect - multiple responses" do
     urls = [
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar",
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
+      "http://localhost:#{@test_router_port}/api/json/foo-bar",
+      "http://localhost:#{@test_router_port}/api/text/foo-bar"
     ]
 
     responses =
@@ -115,8 +118,8 @@ defmodule Rackla.Tests do
 
   test "Rackla.collect - multiple deterministic responses (full: false)" do
     urls = [
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar",
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
+      "http://localhost:#{@test_router_port}/api/json/foo-bar",
+      "http://localhost:#{@test_router_port}/api/text/foo-bar"
     ]
 
     [response_1, response_2] =
@@ -130,8 +133,8 @@ defmodule Rackla.Tests do
 
   test "Rackla.collect - multiple deterministic responses (full: true)" do
     urls = [
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar",
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
+      "http://localhost:#{@test_router_port}/api/json/foo-bar",
+      "http://localhost:#{@test_router_port}/api/text/foo-bar"
     ]
 
     [response_1, response_2] =
@@ -145,7 +148,7 @@ defmodule Rackla.Tests do
 
   test "Rackla.map - single response" do
     response_item =
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
+      "http://localhost:#{@test_router_port}/api/text/foo-bar"
       |> request(full: true)
       |> map(&(&1.body))
       |> collect
@@ -156,9 +159,9 @@ defmodule Rackla.Tests do
 
   test "Rackla.map - mulitple responses" do
     urls = [
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar",
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar",
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
+      "http://localhost:#{@test_router_port}/api/text/foo-bar",
+      "http://localhost:#{@test_router_port}/api/text/foo-bar",
+      "http://localhost:#{@test_router_port}/api/text/foo-bar"
     ]
 
     expected_response =
@@ -178,10 +181,10 @@ defmodule Rackla.Tests do
 
   test "Rackla.flat_map - single resuorce" do
     response_item =
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar"
+      "http://localhost:#{@test_router_port}/api/json/foo-bar"
       |> request
       |> flat_map(fn(_) ->
-        request("http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar", full: true)
+        request("http://localhost:#{@test_router_port}/api/text/foo-bar", full: true)
       end)
       |> map(&(&1.body))
       |> collect
@@ -191,8 +194,8 @@ defmodule Rackla.Tests do
   end
 
   test "Rackla.flat_map - deep nesting" do
-    url_1 = "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/json/foo-bar"
-    url_2 = "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
+    url_1 = "http://localhost:#{@test_router_port}/api/json/foo-bar"
+    url_2 = "http://localhost:#{@test_router_port}/api/text/foo-bar"
 
     response_item =
       url_1
@@ -217,7 +220,7 @@ defmodule Rackla.Tests do
   end
 
   test "Rackla.reduce - no accumulator" do
-    url = "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
+    url = "http://localhost:#{@test_router_port}/api/text/foo-bar"
 
     reduce_function =
       fn(x, acc) ->
@@ -241,7 +244,7 @@ defmodule Rackla.Tests do
   end
 
   test "Rackla.reduce - with accumulator" do
-    url = "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar"
+    url = "http://localhost:#{@test_router_port}/api/text/foo-bar"
 
     reduce_function =
       fn(x, acc) ->
@@ -297,7 +300,7 @@ defmodule Rackla.Tests do
 
   test "Rackla.response - valid and invalid URL" do
     urls = [
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar",
+      "http://localhost:#{@test_router_port}/api/text/foo-bar",
       "invalid-url"
     ]
 
@@ -319,7 +322,7 @@ defmodule Rackla.Tests do
 
   test "Rackla.map - valid and invalid URL" do
     urls = [
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar",
+      "http://localhost:#{@test_router_port}/api/text/foo-bar",
       "invalid-url"
     ]
 
@@ -358,7 +361,7 @@ defmodule Rackla.Tests do
 
   test "Rackla.flat_map - valid and invalid URL (variation 1)" do
     urls = [
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar",
+      "http://localhost:#{@test_router_port}/api/text/foo-bar",
       "invalid-url"
     ]
 
@@ -381,7 +384,7 @@ defmodule Rackla.Tests do
 
   test "Rackla.flat_map - valid and invalid URL (variation 2)" do
     urls = [
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar",
+      "http://localhost:#{@test_router_port}/api/text/foo-bar",
       "invalid-url"
     ]
 
@@ -449,7 +452,7 @@ defmodule Rackla.Tests do
 
   test "Timeout - receive_timeout is too short" do
     response =
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/timeout"
+      "http://localhost:#{@test_router_port}/api/timeout"
       |> request(receive_timeout: 1_000)
       |> collect
 
@@ -458,7 +461,7 @@ defmodule Rackla.Tests do
 
   test "Timeout - receive_timeout is long enough" do
     response =
-      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/timeout"
+      "http://localhost:#{@test_router_port}/api/timeout"
       |> request(receive_timeout: 2_500)
       |> collect
 
