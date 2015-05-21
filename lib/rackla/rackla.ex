@@ -15,6 +15,11 @@ defmodule Rackla do
 
         {:ok, producer} =
           Task.start_link(fn ->
+            request_options = Map.get(request, :options, [])
+            global_insecure = Dict.get(options, :insecure, false)
+            global_connect_timeout = Dict.get(options, :connect_timeout, 5_000)
+            global_receive_timeout = Dict.get(options, :receive_timeout, 5_000)
+
             hackney_request =
               :hackney.request(
                 Map.get(request, :method, :get),
@@ -22,9 +27,9 @@ defmodule Rackla do
                 Map.get(request, :headers, %{}) |> Enum.into([]),
                 Map.get(request, :body, ""),
                 [
-                  insecure: Dict.get(options, :insecure, false),
-                  connect_timeout: Dict.get(options, :connect_timeout, 5_000),
-                  recv_timeout: Dict.get(options, :receive_timeout, 5_000)
+                  insecure: Dict.get(request_options, :insecure, global_insecure),
+                  connect_timeout: Dict.get(request_options, :connect_timeout, global_connect_timeout),
+                  recv_timeout: Dict.get(request_options, :receive_timeout, global_receive_timeout)
                 ]
               )
 

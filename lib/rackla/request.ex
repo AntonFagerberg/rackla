@@ -29,7 +29,5 @@ defmodule Rackla.Request do
             url:      "",
             headers:  %{},
             body:     "",
-            options:  %{connect_timeout: 5_000,
-                        receive_timeout: 5_000,
-                        insecure: false}
+            options:  %{}
 end

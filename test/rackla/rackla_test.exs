@@ -467,4 +467,28 @@ defmodule Rackla.Tests do
 
     assert response == "ok"
   end
+
+  test "Request specific timeout - receive_timeout is too short" do
+    response =
+      %Rackla.Request{
+        url: "http://localhost:#{@test_router_port}/api/timeout",
+        options: [receive_timeout: 1_000]
+      }
+      |> request(receive_timeout: 5_000)
+      |> collect
+
+    assert response == {:error, :timeout}
+  end
+
+  test "Request specific timeout - receive_timeout is long enough" do
+    response =
+      %Rackla.Request{
+        url: "http://localhost:#{@test_router_port}/api/timeout",
+        options: [receive_timeout: 2_500]
+      }
+      |> request(receive_timeout: 1)
+      |> collect
+
+    assert response == "ok"
+  end
 end
