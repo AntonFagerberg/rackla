@@ -1,4 +1,6 @@
 defmodule TestRouter do
+  @moduledoc false
+  
   use Plug.Router
   import Rackla
 

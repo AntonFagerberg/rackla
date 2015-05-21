@@ -1,4 +1,6 @@
 defmodule Router do
+  @moduledoc false
+
   use Plug.Router
   use Plug.ErrorHandler
   import Rackla
