@@ -1,6 +1,7 @@
 defmodule Mix.Tasks.Server do
+  @moduledoc false
   use Mix.Task
-  
+
   @shortdoc "Starts applications and their servers"
 
   def run(_args) do
