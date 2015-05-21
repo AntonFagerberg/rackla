@@ -4,7 +4,7 @@ defmodule Rackla do
 
   @type t :: %__MODULE__{producers: [pid | t]}
   defstruct producers: []
-  
+
   @spec request(String.t | Rackla.Request.t | [String.t] | [Rackla.Request.t], Dict.t) :: t
   def request(requests, options \\ [])
 
@@ -35,18 +35,18 @@ defmodule Rackla do
                     consumer = receive do
                       {pid, :ready} -> pid
                     end
-                    
-                    response = 
+
+                    response =
                       if Dict.get(options, :full, false) do
                         %{status: status, headers: headers |> Enum.into(%{}), body: body}
-                      else 
+                      else
                         body
                       end
 
                     send(consumer, {self, {:ok, response}})
 
                   {:error, atom} ->
-                    warn_request(:closed)
+                    warn_request(atom)
                 end
 
               {:error, {atom, _partial_body}} ->
@@ -80,7 +80,7 @@ defmodule Rackla do
 
     %Rackla{producers: [producers]}
   end
-  
+
   @spec just_list([any]) :: t
   def just_list(things) when is_list(things) do
     things
@@ -104,7 +104,7 @@ defmodule Rackla do
 
                   {^producer, {:ok, thing}} ->
                     {:ok, fun.(thing)}
-                
+
                   {^producer, error} ->
                     {:ok, fun.(error)}
                 end
@@ -145,14 +145,14 @@ defmodule Rackla do
                 receive do
                   {^producer, {:rackla, nested_rackla}} ->
                     flat_map(nested_rackla, fun)
-                  
+
                   {^producer, {:ok, thing}} ->
                     fun.(thing)
-                    
+
                   {^producer, error} ->
                     fun.(error)
                 end
-                
+
               receive do
                 {consumer, :ready} ->
                   send(consumer, {self, {:rackla, new_rackla}})
@@ -179,73 +179,74 @@ defmodule Rackla do
     {:ok, new_producer} =
       Task.start_link(fn ->
         thing = reduce_recursive(rackla, fun)
-        
+
         receive do
           {consumer, :ready} -> send(consumer, {self, {:ok, thing}})
         end
       end)
-      
+
     %Rackla{producers: [new_producer]}
   end
-  
+
   def reduce(%Rackla{} = rackla, acc, fun) when is_function(fun, 2) do
     {:ok, new_producer} =
       Task.start_link(fn ->
         thing = reduce_recursive(rackla, acc, fun)
-        
+
         receive do
           {consumer, :ready} -> send(consumer, {self, {:ok, thing}})
         end
       end)
-      
+
     %Rackla{producers: [new_producer]}
   end
-  
+
   @spec reduce_recursive(t, (any, any -> any)) :: any
   defp reduce_recursive(%Rackla{producers: producers}, fun) do
     [producer | tail_producers] = producers
     send(producer, {self, :ready})
-    
+
     acc =
       receive do
         {^producer, {:rackla, nested_producers}} ->
           reduce_recursive(nested_producers, fun)
-          
-        {^producer, {:ok, thing}} -> 
+
+        {^producer, {:ok, thing}} ->
           thing
 
-        {^producer, error} -> 
+        {^producer, error} ->
           error
       end
 
     reduce_recursive(%Rackla{producers: tail_producers}, acc, fun)
   end
-  
+
   @spec reduce_recursive(t, any, (any, any -> any)) :: any
   defp reduce_recursive(%Rackla{producers: producers}, acc, fun) do
     Enum.reduce(producers, acc, fn(producer, acc) ->
       send(producer, {self, :ready})
-      
+
       receive do
         {^producer, {:rackla, nested_producers}} ->
           reduce_recursive(nested_producers, acc, fun)
-          
+
         {^producer, {:ok, thing}} ->
           fun.(thing, acc)
-          
+
         {^producer, error} ->
           fun.(error, acc)
       end
     end)
   end
 
-  @spec collect(t, Dict.t) :: [any] | any
-  def collect(%Rackla{} = rackla, options \\ []) do
+  @spec collect(t) :: [any] | any
+  def collect(%Rackla{} = rackla) do
     [single_response | rest] = all_responses = collect_recursive(rackla)
     if rest == [], do: single_response, else: all_responses
   end
-  
-  defp collect_recursive(%Rackla{producers: producers}, options \\ []) do
+
+  @spec collect_recursive(t) :: [any]
+  defp collect_recursive(%Rackla{producers: producers}) do
     Enum.flat_map(producers, fn(producer) ->
       send(producer, {self, :ready})
 
@@ -255,7 +256,7 @@ defmodule Rackla do
 
         {^producer, {:ok, thing}} ->
           [thing]
-          
+
         {^producer, error} ->
           [error]
       end
@@ -283,7 +284,7 @@ defmodule Rackla do
   end
 
   @spec response_async(t, Plug.Conn.t, Dict.t) :: Plug.Conn.t
-  defp response_async(%Rackla{} = producers, conn, options \\ []) do
+  defp response_async(%Rackla{} = producers, conn, options) do
     unless (conn.state == :chunked) do
       conn =
         conn
@@ -294,8 +295,8 @@ defmodule Rackla do
     prepare_chunks(producers)
     |> send_chunks(conn)
   end
-  
-  @spec prepare_chunks(t) :: [pid] 
+
+  @spec prepare_chunks(t) :: [pid]
   defp prepare_chunks(%Rackla{producers: producers}) do
     Enum.flat_map(producers, fn(producer) ->
       case producer do
@@ -315,34 +316,34 @@ defmodule Rackla do
   defp send_chunks(producers, conn) when is_list(producers) do
     send_thing = fn(thing, remaining_producers, conn) ->
       unless is_binary(thing), do: thing = inspect(thing)
-      
+
       case chunk(conn, thing) do
         {:ok, new_conn} ->
-          send_chunks(remaining_producers, conn)
+          send_chunks(remaining_producers, new_conn)
 
         {:error, reason} ->
           warn_response(reason)
           conn
       end
     end
-    
+
     receive do
       {message_producer, thing} ->
-        {remaining_producers, current_producer} = 
+        {remaining_producers, current_producer} =
           Enum.partition(producers, fn(pid) ->
             pid != message_producer
           end)
-        
+
         if (current_producer == []) do
           send_chunks(producers, conn)
         else
           case thing do
             {:rackla, nested_rackla} ->
               send_chunks(remaining_producers ++ prepare_chunks(nested_rackla), conn)
-            
+
             {:ok, thing} ->
               send_thing.(thing, remaining_producers, conn)
-              
+
             {error} ->
               send_thing.(error, remaining_producers, conn)
           end
@@ -351,9 +352,9 @@ defmodule Rackla do
   end
 
   @spec response_sync(t, Plug.Conn.t, Dict.t) :: Plug.Conn.t
-  defp response_sync(%Rackla{} = rackla, conn, options \\ []) do
+  defp response_sync(%Rackla{} = rackla, conn, options) do
     response = collect(rackla)
-    
+
     response_encoded =
       if Dict.get(options, :json, false) do
         cond do
@@ -369,7 +370,7 @@ defmodule Rackla do
               end
             end)
             |> Poison.encode
-          
+
           true ->
             if is_binary(response) do
               case Poison.decode(response) do
@@ -383,36 +384,36 @@ defmodule Rackla do
       else
         cond do
           is_list(response) ->
-            binary = 
+            binary =
               Enum.map(response, fn(thing) ->
                 unless is_binary(thing), do: thing = inspect(thing)
                 thing
               end)
               |> Enum.join
-            
+
             {:ok, binary}
-          
+
           is_binary(response) ->
             {:ok, response}
-            
+
           true ->
             {:ok, inspect(response)}
         end
       end
-    
+
     case response_encoded do
       {:ok, response_binary} ->
         headers = Dict.get(options, :headers, %{})
-        
+
         if Dict.get(options, :compress, false) do
           response_binary = :zlib.gzip(response_binary)
           headers = Dict.merge(headers, %{"Content-Encoding" => "gzip"})
         end
-        
+
         if Dict.get(options, :json, false) do
           headers = Dict.merge(headers, %{"Content-Type" => "application/json"})
         end
-        
+
         chunk_status =
           conn
           |> set_headers(headers)
@@ -427,7 +428,7 @@ defmodule Rackla do
             warn_response(reason)
             conn
         end
-      
+
       {:error, reason} ->
         Logger.error("Response decoding error: #{inspect(reason)}")
         conn
@@ -455,7 +456,7 @@ end
 
 defimpl Inspect, for: Rackla do
   import Inspect.Algebra
-  
+
   defp count(producers) do
     Enum.reduce(producers, 0, fn(item, acc) ->
       case item do
@@ -465,7 +466,7 @@ defimpl Inspect, for: Rackla do
     end)
   end
 
-  def inspect(rackla, opts) do
-    concat ["#Rackla<#{length(rackla.producers)}>"]
+  def inspect(rackla, _opts) do
+    concat ["#Rackla<#{count(rackla.producers)}>"]
   end
 end
