@@ -108,6 +108,57 @@ defmodule Router do
   # API end-points used for testing #
   # =============================== #
 
+  get "/test/proxy" do
+    conn.query_string
+    |> request
+    |> response
+  end
+
+  get "/test/proxy/404" do
+    conn.query_string
+    |> request
+    |> response(status: 404)
+  end
+
+  get "/test/proxy/multi" do
+    conn.query_string
+    |> String.split("|")
+    |> request
+    |> response
+  end
+
+  get "/test/proxy/multi/sync" do
+    conn.query_string
+    |> String.split("|")
+    |> request
+    |> response(sync: true)
+  end
+
+  get "/test/proxy/gzip" do
+    conn.query_string
+    |> request
+    |> response(compress: true)
+  end
+
+  get "/test/json" do
+    just(%{foo: "bar"})
+    |> response(json: true)
+  end
+
+  get "/test/proxy/set-headers" do
+    conn.query_string
+    |> request
+    |> response(headers: %{"Rackla" => "CrocodilePear"})
+  end
+
+  get "/test/json/multi" do
+    just(%{foo: "bar"})
+    |> join(just("hello!"))
+    |> join(just(1))
+    |> join(just([1.0, 2.0, 3.0]))
+    |> response(json: true)
+  end
+
   get "/api/json/foo-bar" do
     json = Poison.encode!(%{foo: "bar"})
 
@@ -119,6 +170,10 @@ defmodule Router do
   get "/api/json/no-header/foo-bar" do
     json = Poison.encode!(%{foo: "bar"})
     send_resp(conn, 200, json)
+  end
+
+  get "/api/text/foo-bar" do
+    send_resp(conn, 200, "foo-bar")
   end
 
   get "/api/text/foo-bar" do
