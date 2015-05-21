@@ -4,10 +4,6 @@ defmodule Rackla.Tests do
 
   import Rackla
 
-  # TODO tests
-  # - Timeouts
-  # - HTTP verbs (delete etc)
-
   test "Rackla.request - single URL" do
     rackla = request("http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/text/foo-bar")
 
