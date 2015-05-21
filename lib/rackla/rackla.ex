@@ -38,7 +38,7 @@ defmodule Rackla do
 
                     response =
                       if Dict.get(options, :full, false) do
-                        %{status: status, headers: headers |> Enum.into(%{}), body: body}
+                        %Rackla.Response{status: status, headers: headers |> Enum.into(%{}), body: body}
                       else
                         body
                       end

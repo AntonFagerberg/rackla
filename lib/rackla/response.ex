@@ -1,4 +1,10 @@
 defmodule Rackla.Response do
-  defstruct status: nil, headers: %{}, body: "", meta: %{}, error: nil
-  @type t :: %Rackla.Response{status: integer, headers: %{}, body: binary, meta: %{}, error: atom}
+  @type t :: %__MODULE__{
+              status: integer,
+              headers: %{},
+              body: binary}
+
+  defstruct status:   nil, 
+            headers:  %{},
+            body:     ""
 end
