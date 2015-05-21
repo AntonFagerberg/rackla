@@ -446,4 +446,22 @@ defmodule Rackla.Tests do
 
     assert response_item == {:error, %ArithmeticError{}}
   end
+
+  test "Timeout - receive_timeout is too short" do
+    response =
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/timeout"
+      |> request(receive_timeout: 1_000)
+      |> collect
+
+    assert response == {:error, :timeout}
+  end
+
+  test "Timeout - receive_timeout is long enough" do
+    response =
+      "http://localhost:#{Application.get_env(:rackla, :port, 4000)}/api/timeout"
+      |> request(receive_timeout: 2_500)
+      |> collect
+
+    assert response == "ok"
+  end
 end

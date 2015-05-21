@@ -45,7 +45,7 @@ defmodule Router do
     |> request
     |> response(json: true)
   end
-  
+
   get "/temperature" do
     temperature_extractor = fn(weather_response) ->
       json_decoded = Poison.decode(weather_response)
@@ -59,7 +59,7 @@ defmodule Router do
     |> map(temperature_extractor)
     |> response(json: true, compress: true)
   end
-  
+
   #
   # Access-token from the Instagram API is required to use this end-point.
   #
@@ -67,14 +67,14 @@ defmodule Router do
     "<!doctype html><html lang=\"en\"><head></head><body>"
     |> just
     |> response
-  
+
     "https://api.instagram.com/v1/users/self/feed?count=50&access_token=" <> conn.query_string
     |> request
     |> flat_map(fn(response) ->
       case response do
         {:error, error} ->
           just(error)
-          
+
         _ ->
           case Poison.decode(response) do
             {:ok, json} ->
@@ -86,19 +86,19 @@ defmodule Router do
                 case img_data do
                   {:error, error} ->
                     just(error)
-                    
+
                   _ ->
                     "<img src=\"data:image/jpeg;base64,#{Base.encode64(img_data)}\" height=\"150px\" width=\"150px\">"
                 end
               end)
-            
+
             {:error, _} ->
               just(response)
           end
       end
     end)
     |> response
-    
+
     "</body></html>"
     |> just
     |> response
@@ -115,7 +115,7 @@ defmodule Router do
     |> put_resp_header("Content-Type", "application/json")
     |> send_resp(200, json)
   end
-  
+
   get "/api/json/no-header/foo-bar" do
     json = Poison.encode!(%{foo: "bar"})
     send_resp(conn, 200, json)
@@ -124,11 +124,11 @@ defmodule Router do
   get "/api/text/foo-bar" do
     send_resp(conn, 200, "foo-bar")
   end
-  
+
   post "/api/text/foo-bar" do
     send_resp(conn, 200, "foo-bar-post")
   end
-  
+
   put "/api/text/foo-bar" do
     send_resp(conn, 200, "foo-bar-put")
   end
@@ -139,6 +139,11 @@ defmodule Router do
     conn
     |> put_resp_header("Content-Type", "application/json")
     |> send_resp(200, json)
+  end
+
+  get "/api/timeout" do
+    :timer.sleep(2_000)
+    send_resp(conn, 200, "ok")
   end
 
   match _ do
