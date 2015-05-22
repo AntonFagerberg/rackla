@@ -229,7 +229,7 @@ defmodule Rackla do
 
   @doc """
   Invokes fun for each element in the `Rackla` struct passing that element and
-  the accumulator acc as arguments. fun's return value is stored in acc. The 
+  the accumulator acc as arguments. `fun`s return value is stored in acc. The 
   first element of the collection is used as the initial value of acc. Returns 
   the accumulated value inside a `Rackla` struct.
   
@@ -313,7 +313,7 @@ defmodule Rackla do
   
   @doc """
   Returns the element encapsulated inside a `Rackla` struct, or a list of 
-  elemets in case the `Rackla` struct contains many elements.
+  elements in case the `Rackla` struct contains many elements.
   
   Example:
       Rackla.just_list([1,2,3]) |> Rackla.collect
@@ -370,7 +370,7 @@ defmodule Rackla do
    When this option is used, the entire response has to be sent in one chunk. 
    You can't reuse the `conn` to send any more data after `Rackla.response` with
    `:compress` set to `true` has been invoked.
-   * `json` - If set to true, the encapsulated elements will be converted into
+   * `:json` - If set to true, the encapsulated elements will be converted into
    a JSON encoded string before they are sent to the client. This will also set
    the header "Content-Type" to the appropriate "application/json".
   """

@@ -10,11 +10,13 @@ Rackla utilizes [Plug](https://github.com/elixir-lang/plug) to expose new end-po
 
 You can add Rackla to your existing application by adding the following Mix dependency:
 
-    defp deps do
-      [
-        {:rackla, "~> 0.1"} # TODO Fix correct
-      ]
-    end
+```elixir
+defp deps do
+  [
+    {:rackla, "~> 0.1"} # TODO Fix correct
+  ]
+end
+```
 
 However, this setup can be a bit complicated, especially if you are not used to Plug and it is therefore recommended that you do a "full installation" for your projects (described below) which will get you up an running in no time!
 
@@ -38,47 +40,49 @@ OpenWeatherMap has an API with the following end-point that we're going to use: 
 
 This will return the weather data for Malmö in Sweden:
 
+```json
+{
+  "coord":{
+    "lon":13,
+    "lat":55.6
+  },
+  "sys":{
+    "message":0.0071,
+    "country":"Sweden",
+    "sunrise":1432262690,
+    "sunset":1432322670
+  },
+  "weather":[
     {
-      "coord":{
-        "lon":13,
-        "lat":55.6
-      },
-      "sys":{
-        "message":0.0071,
-        "country":"Sweden",
-        "sunrise":1432262690,
-        "sunset":1432322670
-      },
-      "weather":[
-        {
-           "id":802,
-           "main":"Clouds",
-           "description":"scattered clouds",
-           "icon":"03d"
-        }
-      ],
-      "base":"stations",
-      "main":{
-        "temp":288.737,
-        "temp_min":288.737,
-        "temp_max":288.737,
-        "pressure":1030.12,
-        "sea_level":1035.87,
-        "grnd_level":1030.12,
-        "humidity":58
-      },
-      "wind":{
-        "speed":5.36,
-        "deg":248.501
-      },
-      "clouds":{
-        "all":36
-      },
-      "dt":1432303003,
-      "id":2712995,
-      "name":"Malmo",
-      "cod":200
+       "id":802,
+       "main":"Clouds",
+       "description":"scattered clouds",
+       "icon":"03d"
     }
+  ],
+  "base":"stations",
+  "main":{
+    "temp":288.737,
+    "temp_min":288.737,
+    "temp_max":288.737,
+    "pressure":1030.12,
+    "sea_level":1035.87,
+    "grnd_level":1030.12,
+    "humidity":58
+  },
+  "wind":{
+    "speed":5.36,
+    "deg":248.501
+  },
+  "clouds":{
+    "all":36
+  },
+  "dt":1432303003,
+  "id":2712995,
+  "name":"Malmo",
+  "cod":200
+}
+```
 
 What we're interested in is the `temp` value stored in `main`, and the `name` field.
 The goal with the new end-point in our API gateway is to take an arbitrary amount of cities
@@ -86,50 +90,53 @@ separated by `|` in the query string, such as: `/temperature?malmo,se|halmstad,s
 
 We want our JSON response to look like this:
 
-    [
-       {
-          "Malmo":289.751
-       },
-       {
-          "Halmstad":286.751
-       },
-       {
-          "Copenhagen":287.487
-       },
-       {
-          "San Francisco":285.087
-       },
-       {
-          "Stockholm":288.801
-       }
-    ]
+```json
+[
+   {
+      "Malmo":289.751
+   },
+   {
+      "Halmstad":286.751
+   },
+   {
+      "Copenhagen":287.487
+   },
+   {
+      "San Francisco":285.087
+   },
+   {
+      "Stockholm":288.801
+   }
+]
+```
 
 And this is how the code in Rackla will look like (explained below):
+```elixir
+get "/temperature" do
+  temperature_extractor = fn(http_response) ->
+    case http_response do
+      {:error, reason} ->
+        "HTTP request failed because: #{reason}"
+      
+      ok_resonse ->
+        case Poison.decode(ok_resonse) do
+          {:ok, json_decoded} ->
+            Map.put(%{}, json_decoded["name"], json_decoded["main"]["temp"])
 
-    get "/temperature" do
-      temperature_extractor = fn(http_response) ->
-        case http_response do
           {:error, reason} ->
-            "HTTP request failed because: #{reason}"
-          
-          ok_resonse ->
-            case Poison.decode(ok_resonse) do
-              {:ok, json_decoded} ->
-                Map.put(%{}, json_decoded["name"], json_decoded["main"]["temp"])
-
-              {:error, reason} ->
-                "Failed to decode response because: #{reason}"
-            end
+            "Failed to decode response because: #{reason}"
         end
-      end
-
-      conn.query_string
-      |> String.split("|")
-      |> Enum.map(&("http://api.openweathermap.org/data/2.5/weather?q=#{&1}"))
-      |> Rackla.request
-      |> Rackla.map(temperature_extractor)
-      |> Rackla.response(json: true, compress: true)
     end
+  end
+
+  conn.query_string
+  |> String.split("|")
+  |> Enum.map(&("http://api.openweathermap.org/data/2.5/weather?q=#{&1}"))
+  |> Rackla.request
+  |> Rackla.map(temperature_extractor)
+  |> Rackla.response(json: true, compress: true)
+end
+```
 
 Let us walk through the code and explain what is happening here. First we define our endpoint `/temperature` as we would normally do in Plug. Then we define a function which we'll use in the `map` function in the pipeline, let's get back to it later and first look at the pipeline defined at the bottom of our end-point.
 
@@ -149,46 +156,48 @@ Done! That's all we need to do to make it work!
 ### Instagram (Base64 encoded images)
 In this example, we will instead of providing an API, actually serve an entire HTML page that we can view in our browser. This example illustrates how we can make recursive requests and work with asynchronous responses.
 
-    get "/instagram" do
-      "<!doctype html><html lang=\"en\"><head></head><body>"
-      |> just
-      |> response
+```elixir
+get "/instagram" do
+  "<!doctype html><html lang=\"en\"><head></head><body>"
+  |> Rackla.just
+  |> Rackla.response
 
-      "https://api.instagram.com/v1/users/self/feed?count=50&access_token=" <> conn.query_string
-      |> request
-      |> flat_map(fn(response) ->
-        case response do
-          {:error, error} ->
-            just(error)
+  "https://api.instagram.com/v1/users/self/feed?count=50&access_token=" <> conn.query_string
+  |> Rackla.request
+  |> Rackla.flat_map(fn(response) ->
+    case response do
+      {:error, error} ->
+        Rackla.just(error)
 
-          _ ->
-            case Poison.decode(response) do
-              {:ok, json} ->
-                json
-                |> Map.get("data")
-                |> Enum.map(&(&1["images"]["standard_resolution"]["url"]))
-                |> request
-                |> map(fn(img_data) ->
-                  case img_data do
-                    {:error, error} ->
-                      just(error)
+      _ ->
+        case Poison.decode(response) do
+          {:ok, json} ->
+            json
+            |> Map.get("data")
+            |> Enum.map(&(&1["images"]["standard_resolution"]["url"]))
+            |> Rackla.request
+            |> Rackla.map(fn(img_data) ->
+              case img_data do
+                {:error, error} ->
+                  just(error)
 
-                    _ ->
-                      "<img src=\"data:image/jpeg;base64,#{Base.encode64(img_data)}\" height=\"150px\" width=\"150px\">"
-                  end
-                end)
+                _ ->
+                  "<img src=\"data:image/jpeg;base64,#{Base.encode64(img_data)}\" height=\"150px\" width=\"150px\">"
+              end
+            end)
 
-              {:error, _} ->
-                just(response)
-            end
+          {:error, _} ->
+            Rackla.just(response)
         end
-      end)
-      |> response
-
-      "</body></html>"
-      |> just
-      |> response
     end
+  end)
+  |> Rackla.response
+
+  "</body></html>"
+  |> Rackla.just
+  |> Rackla.response
+end
+```
     
 Once again, let's go through the code to see what is happening. We start by exposing the end-point `/instagram` as we normally do in Plug. Then we define the first of three pipelines. We use some HTML code in a string, convert it into a `Rackla` struct with the function `just` and use `response` to send it to the client. 
 
@@ -241,8 +250,10 @@ elements encapsulated in it and returns a new `Rackla` struct with the
 results.
 
 Example:
-    Rackla.just_list([1,2,3]) |> Rackla.map(fn(x) -> x * 2 end) |> Rackla.collect
-    [2, 4, 6]
+```elixir
+Rackla.just_list([1,2,3]) |> Rackla.map(fn(x) -> x * 2 end) |> Rackla.collect
+[2, 4, 6]
+```
     
 ### flat_map
 Takes a `Rackla` struct, applies the specified function to each of the 
@@ -256,53 +267,64 @@ on the results of a previous request. In those cases, you can use
 `Rackla` struct.
 
 Example:
-    Rackla.just_list([1,2,3]) |> Rackla.flat_map(fn(x) -> Rackla.just(x * 2) end) |> Rackla.collect
-    [2, 4, 6]
-    
+```elixir
+Rackla.just_list([1,2,3]) |> Rackla.flat_map(fn(x) -> Rackla.just(x * 2) end) |> Rackla.collect
+[2, 4, 6]
+```  
 
 ### reduce
 Invokes fun for each element in the `Rackla` struct passing that element and
-the accumulator acc as arguments. fun's return value is stored in acc. The 
+the accumulator acc as arguments. `fun`s return value is stored in acc. The 
 first element of the collection is used as the initial value of acc (you can 
 also use `Rackla.reduce/3` and specify your own accumulator). Returns the 
 accumulated value inside a `Rackla` struct.
 
 Example:
-    Rackla.just_list([1,2,3]) |> Rackla.reduce(fn (x, acc) -> x + acc end) |> Rackla.collect
-    6
+```elixir
+Rackla.just_list([1,2,3]) |> Rackla.reduce(fn (x, acc) -> x + acc end) |> Rackla.collect
+6
+```
 
 ### just
 Takes any type an encapsulates it in a `Rackla` struct.
 
 Example:
-    Rackla.just([1,2,3]) |> Rackla.map(&IO.inspect/1)
-    [1, 2, 3]
-    
+```elixir
+Rackla.just([1,2,3]) |> Rackla.map(&IO.inspect/1)
+[1, 2, 3]
+```
+
 ### just_list
 Takes a list of and encapsulates each of the containing elements separately 
 in a `Rackla` struct.
 
 Example:
-    Rackla.just_list([1,2,3]) |> Rackla.map(&IO.inspect/1)
-    3
-    2
-    1
+```elixir
+Rackla.just_list([1,2,3]) |> Rackla.map(&IO.inspect/1)
+3
+2
+1
+```
 
 ### collect
 Returns the element encapsulated inside a `Rackla` struct, or a list of 
-elemets in case the `Rackla` struct contains many elements.
+elements in case the `Rackla` struct contains many elements.
 
 Example:
-    Rackla.just_list([1,2,3]) |> Rackla.collect
-    [1,2,3]
+```elixir
+Rackla.just_list([1,2,3]) |> Rackla.collect
+[1,2,3]
+```
 
 ### join
 Returns a new `Rackla` struct by joining the encapsulated types from two
 `Rackla` structs.
 
 Example:
-    Rackla.join(Rackla.just(1), Rackla.just(2)) |> Rackla.collect
-    [1, 2]
+```elixir
+Rackla.join(Rackla.just(1), Rackla.just(2)) |> Rackla.collect
+[1, 2]
+```
     
 ### response
 Converts a `Rackla` struct to a HTTP response and send it to the client by
@@ -311,14 +333,14 @@ variable named `conn`. If you want to specify which `Plug.Conn` to use, you
 can use `Rackla.response_conn`.
 
 Using this macro is the same as writing:
-    conn = response_conn(rackla, conn, options)
+    `conn = response_conn(rackla, conn, options)`
 
 Options:
  * `:compress` - Compresses the response by applying a gzip compression to it.
  When this option is used, the entire response has to be sent in one chunk. 
  You can't reuse the `conn` to send any more data after `Rackla.response` with
  `:compress` set to `true` has been invoked.
- * `json` - If set to true, the encapsulated elements will be converted into
+ * `:json` - If set to true, the encapsulated elements will be converted into
  a JSON encoded string before they are sent to the client. This will also set
  the header "Content-Type" to the appropriate "application/json".
 
