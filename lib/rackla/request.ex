@@ -13,9 +13,12 @@ defmodule Rackla.Request do
   overwrite global options.
 
   Options:
-  * `:connect_timeout` - Connection timeout limit (ms), default: `5_000`.
-  * `:receive_timeout` - Receive timeout limit (ms), default: `5_000`.
-  * `:insecure` - If true, SSL certificates will not be checked, default: `false`.
+  * `:connect_timeout` - Connection timeout limit in milliseconds, default: 
+  `5_000`.
+  * `:receive_timeout` - Receive timeout limit in milliseconds, default: 
+  `5_000`.
+  * `:insecure` - If true, SSL certificates will not be checked, default: 
+  `false`.
   """
 
   @type t :: %__MODULE__{

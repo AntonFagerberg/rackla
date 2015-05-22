@@ -1,10 +1,35 @@
 defmodule Rackla do
+  @moduledoc File.read!("README.md")
+  
   import Plug.Conn
   require Logger
 
   @type t :: %__MODULE__{producers: [pid | t]}
   defstruct producers: []
 
+  @doc """
+  Takes a single string (URL) or a `Rackla.Request` struct and  executes a HTTP 
+  request to the defined server. You can, by using the  `Rackla.Request` struct,
+  specify more advanced options for your request such  as which HTTP verb to use
+  but also individual connection timeout limits etc.  You can also call this 
+  function with a list of strings or `Rackla.Request` structs in order to 
+  perform multiple requests concurrently.
+  
+  This function will return a `Rackla` struct which will contain the results 
+  from the request(s) once available or an `:error` tuple in case of failures
+  such non-responding servers or DNS lookup failures.
+  
+  Options:
+   * `:connect_timeout` - Connection timeout limit in milliseconds, default: 
+   `5_000`.
+   * `:receive_timeout` - Receive timeout limit in milliseconds, default: 
+   `5_000`.
+   * `:insecure` - If set to true, SSL certificates will not be checked, 
+   default: `false`.
+   
+   If you specify any options in a `Rackla.Request` struct, these will overwrite
+   the options passed to the `request` function for that specific request.
+  """
   @spec request(String.t | Rackla.Request.t | [String.t] | [Rackla.Request.t], Dict.t) :: t
   def request(requests, options \\ [])
 
@@ -72,6 +97,13 @@ defmodule Rackla do
     request([request], options)
   end
 
+  @doc """
+  Takes any type an encapsulates it in a `Rackla` struct.
+  
+  Example:
+      Rackla.just([1,2,3]) |> Rackla.map(&IO.inspect/1)
+      # [1, 2, 3]
+  """
   @spec just(any | [any]) :: t
   def just(thing) do
     {:ok, producers} =
@@ -86,6 +118,16 @@ defmodule Rackla do
     %Rackla{producers: [producers]}
   end
 
+  @doc """
+  Takes a list of any types and encapsulates each of the containing elements
+  separately in a `Rackla` struct.
+  
+  Example:
+      Rackla.just_enum([1,2,3]) |> Rackla.map(&IO.inspect/1)
+      # 3
+      # 2
+      # 1
+  """
   @spec just_enum([any]) :: t
   def just_enum(things) when is_list(things) do
     things
@@ -93,6 +135,18 @@ defmodule Rackla do
     |> Enum.reduce(&(join &2, &1))
   end
 
+  @doc """
+  Returns a new `Rackla` struct, where each encapsulated item is the result of 
+  invoking `fun` on each corresponding encapsulated item.
+  
+  Takes a `Rackla` struct, applies the specified function to each of the 
+  elements encapsulated in it and returns a new `Rackla` struct with the 
+  results.
+  
+  Example:
+      Rackla.just_enum([1,2,3]) |> Rackla.map(fn(x) -> x * 2 end) |> Rackla.collect
+      [2, 4, 6]
+  """
   @spec map(t, (any -> any)) :: t
   def map(%Rackla{producers: producers}, fun) when is_function(fun, 1) do
     new_producers =
@@ -126,6 +180,21 @@ defmodule Rackla do
     %Rackla{producers: new_producers}
   end
 
+  @doc """
+  Takes a `Rackla` struct, applies the specified function to each of the 
+  elements encapsulated in it and returns a new `Rackla` struct with the 
+  results. The given function must return a `Rackla` struct.
+  
+  This function is useful when you want to create a new request pipeline based
+  on the results of a previous request. In those cases, you can use 
+  `Rackla.flat_map` to access the response from the request and call 
+  `Rackla.request` inside the function since `Rackla.request` returns a 
+  `Rackla` struct.
+  
+  Example:
+      Rackla.just_enum([1,2,3]) |> Rackla.flat_map(fn(x) -> Rackla.just(x * 2) end) |> Rackla.collect
+      [2, 4, 6]
+  """
   @spec flat_map(t, (any -> t)) :: t
   def flat_map(%Rackla{producers: producers}, fun) do
     new_producers =
@@ -158,6 +227,16 @@ defmodule Rackla do
     %Rackla{producers: new_producers}
   end
 
+  @doc """
+  Invokes fun for each element in the `Rackla` struct passing that element and
+  the accumulator acc as arguments. fun's return value is stored in acc. The 
+  first element of the collection is used as the initial value of acc. Returns 
+  the accumulated value inside a `Rackla` struct.
+  
+  Example:
+      Rackla.just_enum([1,2,3]) |> Rackla.reduce(fn (x, acc) -> x + acc end) |> Rackla.collect
+      6
+  """
   @spec reduce(t, (any, any -> any)) :: t
   def reduce(%Rackla{} = rackla, fun) when is_function(fun, 2) do
     {:ok, new_producer} =
@@ -172,6 +251,15 @@ defmodule Rackla do
     %Rackla{producers: [new_producer]}
   end
 
+  @doc """
+  Invokes fun for each element in the `Rackla` struct passing that element and
+  the accumulator acc as arguments. fun's return value is stored in acc.  
+  Returns  the accumulated value inside a `Rackla` struct.
+  
+  Example:
+      Rackla.just_enum([1,2,3]) |> Rackla.reduce(10, fn (x, acc) -> x + acc end) |> Rackla.collect
+      16
+  """
   def reduce(%Rackla{} = rackla, acc, fun) when is_function(fun, 2) do
     {:ok, new_producer} =
       Task.start_link(fn ->
@@ -222,7 +310,15 @@ defmodule Rackla do
       end
     end)
   end
-
+  
+  @doc """
+  Returns the element encapsulated inside a `Rackla` struct, or a list of 
+  elemets in case the `Rackla` struct contains many elements.
+  
+  Example:
+      Rackla.just_enum([1,2,3]) |> Rackla.collect
+      [1,2,3]
+  """
   @spec collect(t) :: [any] | any
   def collect(%Rackla{} = rackla) do
     [single_response | rest] = all_responses = collect_recursive(rackla)
@@ -247,17 +343,46 @@ defmodule Rackla do
     end)
   end
 
+  @doc """
+  Returns a new `Rackla` struct by joining the encapsulated types from two
+  `Rackla` structs.
+  
+  Example:
+      Rackla.join(Rackla.just(1), Rackla.just(2)) |> Rackla.collect
+      [1, 2]
+  """
   @spec join(t, t) :: t
   def join(%Rackla{producers: p1}, %Rackla{producers: p2}) do
     %Rackla{producers: p1 ++ p2}
   end
 
-  defmacro response(tasks, options \\ []) do
+  @doc """
+  Converts a `Rackla` struct to a HTTP response and send it to the client by
+  using `Plug.Conn`. The `Plug.Conn` will be taken implicitly by looking for a 
+  variable named `conn`. If you want to specify which `Plug.Conn` to use, you 
+  can use `Rackla.response_conn`.
+  
+  Using this macro is the same as writing:
+      conn = response_conn(rackla, conn, options)
+  
+  Options:
+   * `:compress` - Compresses the response by applying a gzip compression to it.
+   When this option is used, the entire response has to be sent in one chunk. 
+   You can't reuse the `conn` to send any more data after `Rackla.response` with
+   `:compress` set to `true` has been invoked.
+   * `json` - If set to true, the encapsulated elements will be converted into
+   a JSON encoded string before they are sent to the client. This will also set
+   the header "Content-Type" to the appropriate "application/json".
+  """
+  defmacro response(rackla, options \\ []) do
     quote do
-      var!(conn) = response_conn(unquote(tasks), var!(conn), unquote(options))
+      var!(conn) = response_conn(unquote(rackla), var!(conn), unquote(options))
     end
   end
 
+  @doc """
+  See documentation for `Rackla.response`.
+  """
   @spec response_conn(t, Plug.Conn.t, Dict.t) :: Plug.Conn.t
   def response_conn(%Rackla{} = rackla, conn, options \\ []) do
     if Dict.get(options, :compress, false) || Dict.get(options, :json, false) || Dict.get(options, :sync, false) do
