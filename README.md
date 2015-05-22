@@ -1,309 +1,326 @@
-Rackla
-=============
+# Rackla
 
-Rackla is an open source framework for building API gateways. When we say API gateway, we mean to proxy and potentially enhance the communication between servers and HTTP clients, such as browsers, by transforming the data. The communication can be enhanced by throwing away unnecessary data, concatenating multiple requests or convert the data between different formats. 
+Rackla is an open source framework for building API gateways. When we say API gateway, we mean to proxy and potentially enhance the communication by transforming the data sent between servers and HTTP clients (such as browsers). The communication can be enhanced by throwing away unnecessary data, concatenating multiple requests into a single request or converting the data between different formats. You can also use this to change existing APIs so that they work in a different way, or you can merge any amount of existing APIs into a single new one.
 
-With Rackla you can execute multiple HTTP-requests and transform them in any way you want - asynchronous end to end. The technology used inside Rackla is based on a list of Elixir processes (actors) which follows a defined communication protocol. By piping functions together and forming a pipeline, these processes can communicate independently (asynchronously) of each other to achieve a high level of performance. 
+You can, with Rackla, execute multiple HTTP-requests and transform them in any way you want - asynchronously from back-end to client. The results, encapsulated in the `Rackla` struct, can be transformed with well known functions such as `map`, `flat_map` and `reduce`. By using Elixir, you can express your new API end-points as pipelines which start with requests that are piped in to a transforming function and finally piped into a response.
 
-The protocol used between the Elixir processes is by default abstracted away from the framework user. By instead utilizing helper functions, the developer can gain the performance benefits but without having to deal with any message passing. (There is however nothing stopping the developer who want to tap directly in to the process messaging.)
-
-Rackla utilizes [Plug](https://github.com/elixir-lang/plug) to expose new end-points and communicate with clients over HTTP. Internally, it uses [Hackney](https://github.com/benoitc/hackney) to make HTTP requests and [Poison](https://github.com/devinus/poison) for dealing with JSON.
+Rackla utilizes [Plug](https://github.com/elixir-lang/plug) to expose new end-points and communicate with clients over HTTP. Internally, it uses [Hackney](https://github.com/benoitc/hackney) to make HTTP requests and [Poison](https://github.com/devinus/poison) for dealing with JSON. A big thank you to everyone involved in these projects!
 
 ## Minimal installation (as Mix dependency)
 
-You can add Rackla to your existing application by using the following Mix dependency:
+You can add Rackla to your existing application by adding the following Mix dependency:
 
-```elixir
-defp deps do
-  [
-    {:rackla, "~> 1.0"} # TODO Fix correct
-  ]
-end
-```
+    defp deps do
+      [
+        {:rackla, "~> 0.1"} # TODO Fix correct
+      ]
+    end
 
-However, this setup is much more complicated and it is recommended that you do a "full installation" for your projects (described below).
+However, this setup can be a bit complicated, especially if you are not used to Plug and it is therefore recommended that you do a "full installation" for your projects (described below) which will get you up an running in no time!
 
 ## Full installation (clone example project)
 
-You can clone [this GitHub repository](https://github.com/AntonFagerberg/rackla) in order to get a complete working setup with runnable example end-points and tests. The cloned project includes all infrastructure needed to easily expose (run) your end-points or deploy your API gateway to a cloud service such as Heroku. 
+You can clone [this GitHub repository](https://github.com/AntonFagerberg/rackla) in order to get a complete working API gateway with runnable example end-points and tests. The cloned project includes all infrastructure needed to easily expose (run) your end-points or deploy your API gateway to a cloud service such as Heroku. 
 
 ### Starting the application
-The application will be started automatically when running `iex -S mix`. You can also start it by running `mix server`. By default, it will start on port 4000, but it can be changed either from the file `config/config.exs` or by creating an environment variable named PORT.
+The application will be started automatically when running `iex -S mix`. You can also start it by running `mix server`. By default, it will start on port 4000, but you can change the port either from the file `config/config.exs` or by creating an environment variable named PORT.
 
 You can also create an escript with `mix escript.build` and then run the file `rackla`.
 
 ### Deploy to Heroku
 The [Heroku Buildpack for Elixir](https://github.com/HashNuke/heroku-buildpack-elixir) works out of the box for Rackla when doing a full installation.
 
-## Structs
-### Rackla.Request
- * `:url` - Address to call.
- * `:method` - HTTP verb, defaults to `:get`.
- * `:body` - The request payload, defaults to empty string.
- * `:headers` - Request headers (map), defaults to empty map.
- * `:options` - Request specfic ptions such as timeout limits (overwrites the global one if provided), default to empty map.
- * `:meta` - Meta map which can contain any arbitrary used defined data, defaults to empty map.
- 
-### Rackla.Response
-* `:status` - HTTP response status (such as 200 for OK).
-* `:headers` - Map of response headers.
-* `:body` - Binary response body.
-* `:meta` - The meta map used inside Rackla with arbitrary data.
-* `:error` - Error - either an atom or a thrown exception. If `:error` is not `nil`, the rest of the response should be considered invalid.
+## Example usages
 
-## Examples
+### OpenWeatherMap API (JSON)
 
-### Simple request/response
-A simple proxy can be created by exposing the endpoint `/proxy`. Here we get the target url from the query string, example: `/proxy?www.example.com`. We can then create a simple pipeline by starting with the query string, piping it to the request function which will make a GET request to the URL and finally piping the result to the response function. The response function will then take the `conn` struct from Plug and respond to the client.
+OpenWeatherMap has an API with the following end-point that we're going to use: `http://api.openweathermap.org/data/2.5/weather?q=Malmo,SE`. That end-point lets us specify one city to retrieve weather data from, defined by: `?q=Malmo,SE` (found in the end of the URL). 
 
-```elixir
-get "/proxy" do
-  conn.query_string
-  |> request
-  |> response
-end
-```
+This will return the weather data for Malmö in Sweden:
 
-### Multiple requests
-In the same manner as the previous example, we can use the query-string to retrieve any number of request URLs. In this example, we take a list of URLs from the query string separated by the `|` character, for example: `/proxy/multi?www.example1.com|www.example2.com`.
+    {
+      "coord":{
+        "lon":13,
+        "lat":55.6
+      },
+      "sys":{
+        "message":0.0071,
+        "country":"Sweden",
+        "sunrise":1432262690,
+        "sunset":1432322670
+      },
+      "weather":[
+        {
+           "id":802,
+           "main":"Clouds",
+           "description":"scattered clouds",
+           "icon":"03d"
+        }
+      ],
+      "base":"stations",
+      "main":{
+        "temp":288.737,
+        "temp_min":288.737,
+        "temp_max":288.737,
+        "pressure":1030.12,
+        "sea_level":1035.87,
+        "grnd_level":1030.12,
+        "humidity":58
+      },
+      "wind":{
+        "speed":5.36,
+        "deg":248.501
+      },
+      "clouds":{
+        "all":36
+      },
+      "dt":1432303003,
+      "id":2712995,
+      "name":"Malmo",
+      "cod":200
+    }
 
-```elixir
-get "/proxy/multi" do
-  String.split(conn.query_string, "|")
-  |> request
-  |> response
-end
-```
+What we're interested in is the `temp` value stored in `main`, and the `name` field.
+The goal with the new end-point in our API gateway is to take an arbitrary amount of cities
+separated by `|` in the query string, such as: `/temperature?malmo,se|halmstad,se|copenhagen,dk|san francisco,us|stockholm,se` and return a list of temperatures for these cities.
 
-In this example, all requests are executed asynchronously - the first responding request will be sent first to the client. The response is therefore nondeterministic and the response body is just each individual response's payload concatenated to in to one. This is in most cases useless so let's continue and see what we can do to improve that.
+We want our JSON response to look like this:
 
-### Concatenate JSON
-The function `concatenate_json` is one approach to solve the problem from the previous example. When we get responses, especially out of order, we probably want to know which response belongs which request. Concatenate JSON will give us this and many more benefits. When piping to `concatenate_json`, all responses will be turned in to a JSON-list where each request has its own JSON-object containing the status-code, headers, body and a meta-field which developers can use to add additional information. 
+    [
+       {
+          "Malmo":289.751
+       },
+       {
+          "Halmstad":286.751
+       },
+       {
+          "Copenhagen":287.487
+       },
+       {
+          "San Francisco":285.087
+       },
+       {
+          "Stockholm":288.801
+       }
+    ]
 
+And this is how the code in Rackla will look like (explained below):
 
-```elixir
-get "/proxy/multi/concat-json" do
-  String.split(conn.query_string, "|")
-  |> request
-  |> concatenate_json
-  |> response
-end
-```
+    get "/temperature" do
+      temperature_extractor = fn(http_response) ->
+        case http_response do
+          {:error, reason} ->
+            "HTTP request failed because: #{reason}"
+          
+          ok_resonse ->
+            case Poison.decode(ok_resonse) do
+              {:ok, json_decoded} ->
+                Map.put(%{}, json_decoded["name"], json_decoded["main"]["temp"])
 
-The order in the JSON list is guaranteed to follow the same as the order in as the list of producers.
+              {:error, reason} ->
+                "Failed to decode response because: #{reason}"
+            end
+        end
+      end
 
-If you're only interested in the body (payload) of the response, you can pass `body_only: true` to the `concatenate_json` function which will then discard all other data. Every item in the JSON-list is then just the body from the response.
-
-### Transform
-The function `transform` is an abstraction which makes it easy to manipulate the responses asynchronously. Transform takes a single lambda-function as its only argument. The lambda-function in turn should take a `Rackla.Response` struct and must return a new `Rackla.Response` struct. As an example, we can look at the identity function (which does nothing):
-
-```elixir
-get "/proxy/transform/identity" do
-  identity = fn(response) ->
-    if (is_nil(response.error)) do
-      response
-      |> Map.update!(:status, fn(x) -> x end)
-      |> Map.update!(:headers, fn(x) -> x end)
-      |> Map.update!(:body, fn(x) -> x end)
-      |> Map.update!(:meta, fn(x) -> x end)
-    else
-      response # Handle error in some way
+      conn.query_string
+      |> String.split("|")
+      |> Enum.map(&("http://api.openweathermap.org/data/2.5/weather?q=#{&1}"))
+      |> Rackla.request
+      |> Rackla.map(temperature_extractor)
+      |> Rackla.response(json: true, compress: true)
     end
-  end
 
-  request(conn.query_string)
-  |> transform(identity)
-  |> response
-end
-```
+Let us walk through the code and explain what is happening here. First we define our endpoint `/temperature` as we would normally do in Plug. Then we define a function which we'll use in the `map` function in the pipeline, let's get back to it later and first look at the pipeline defined at the bottom of our end-point.
 
-The transform function works on a "per response" basis.
+Here's what the pipeline will do:
 
-### Collect response
-Sometimes you want to break out of the asynchronous behavior. In such cases, you can utilize the `collect_response` function. When `collect_response` is used, it will wait until all request has responded and collect all responses of type `Rackla.Response` in to a list, or as a single `Rackla.Response` if there is only one.
+ * Get the query string from `conn` (Plug), in this example it will be the string: `"malmo,se|halmstad,se|copenhagen,dk|san francisco,us|stockholm,se"`.
+ * Split the string on `|` to get a list instead: `["malmo,se", "halmstad,se", "copenhagen,dk", "san francisco,us", "stockholm,se"]`.
+ * Map over the list and convert the cities into a list of URLs to call using the OpenWeatherMap API.
+ * Request all URLs, this will return a `Rackla` struct which will contain (when ready) the responses or an `:error` tuple on failure.
+ * Map over the results using our function `temperature_extractor` (explained below).
+ * Respond to the client. We use the options `json` to encode our response in JSON format and set the appropriate headers. We can also use `compress` in order to compress the result with gzip compression.
+ 
+So let's walk through what the function `temperature_extractor` does. First of all, we pattern match to make sure that our HTTP request hasn't failed. If it has failed, we simply return a string with the reason for the failure. If our HTTP request has succeed, we try to decode it from JSON format using the library Poison. If the decoding is successful, we create a new Elixir map containing the name and the temperature for the response. This will be, for example, `%{"Malmo" => 289.751}` in one of the responses. The `response` function will later be able to encode this Elixir map into a JSON map automatically.
 
-### Multiple pipelines
-It is important to point out that you can define multiple pipelines - either to be used in parallel or recursively. You may have two different collections of URLs which should be processed in different ways. This can be accomplished by creating two pipelines which are then concatenated:
+Done! That's all we need to do to make it work!
 
-```elixir
-get "/multi/pipeline" do
-  pipeline_1 = list_of_URLs_1 |> request |> transform(do_things_1)
-  pipeline_2 = list_of_URLs_2 |> request |> transform(do_things_2)
-  
-  pipeline_1 ++ pipeline_2
-  |> concatenate_json
-  |> response
-end
-```
+### Instagram (Base64 encoded images)
+In this example, we will instead of providing an API, actually serve an entire HTML page that we can view in our browser. This example illustrates how we can make recursive requests and work with asynchronous responses.
 
-Using multiple pipelines in this fashion will process all requests asynchronously and respond in the same manner.
+    get "/instagram" do
+      "<!doctype html><html lang=\"en\"><head></head><body>"
+      |> just
+      |> response
 
-In a similar way, you can create recursive pipelines. This is a good idea in cases where you want to extend a response with data from another request. The easiest way to do this is to start a new pipeline inside the lambda function used in the `transform` function. Just remember that the lambda function used in `transform` must return a `Rackla.Response` struct so it is a good idea to use `collect_response` here to convert the internal pipeline to a `Rackla.Response` struct in the end. Since the `transform` function is executed asynchronously, the outer pipeline will not be affected when using the blocking `collect_response` in a pipeline inside a `transform` function.
+      "https://api.instagram.com/v1/users/self/feed?count=50&access_token=" <> conn.query_string
+      |> request
+      |> flat_map(fn(response) ->
+        case response do
+          {:error, error} ->
+            just(error)
 
-```elixir
-get "/recursive/pipeline" do
-  some_function = fn(response) ->
-    urls_from_respone = get_some_things(response)
+          _ ->
+            case Poison.decode(response) do
+              {:ok, json} ->
+                json
+                |> Map.get("data")
+                |> Enum.map(&(&1["images"]["standard_resolution"]["url"]))
+                |> request
+                |> map(fn(img_data) ->
+                  case img_data do
+                    {:error, error} ->
+                      just(error)
+
+                    _ ->
+                      "<img src=\"data:image/jpeg;base64,#{Base.encode64(img_data)}\" height=\"150px\" width=\"150px\">"
+                  end
+                end)
+
+              {:error, _} ->
+                just(response)
+            end
+        end
+      end)
+      |> response
+
+      "</body></html>"
+      |> just
+      |> response
+    end
     
-    urls_from_response
-    |> request
-    |> collect_response
-  end
-  
-  url_list
-  |> request
-  |> transform(some_function)
-  |> response
-end
-```
+Once again, let's go through the code to see what is happening. We start by exposing the end-point `/instagram` as we normally do in Plug. Then we define the first of three pipelines. We use some HTML code in a string, convert it into a `Rackla` struct with the function `just` and use `response` to send it to the client. 
 
-### Advanced requests
-The function `request` can either take strings (URLs) which will be turned in to GET requests - or you can specify a `Rackla.Request` struct with more advanced details (see code documentation for more information about all options).
+After we've responded with the HTML code, we can move on to the big middle pipeline. In it, we will call the an Instagram API end-point - the actual response can be seen here: [instagram.com/developer/endpoints/users/#get_users_feed](https://instagram.com/developer/endpoints/users/#get_users_feed). We have to pass a access token to the Instagram API so we let the browser supply it via the query string and add it to the URL. We call `request` with the URL and then use `flat_map`. The reason for using `flat_map` is because it gives us an easy way to create new requests based on the responses from previous requests. 
+
+If we get a response from the Instagram API, we decode it from JSON format to an Elixir data structure with Poison. We then extract the list stored in the key `"data"` in the Instagram response. This will give us a list of items from our Instagram feed. We then map over these items and extract the URL for the images in standard resolution which will give us a list or URLs to images. We can now pipe this list in to the `request` function to fetch all these images. 
+
+Now, we map over the results - the results will now be binary image data! We can take this binary image data, Base64 encode it and put it inside a HTML image tag. By doing so, the browser can render the response as images directly on our page. In the the "outer" pipeline, we end it with the `response` function which will send these HTML image tags to the client (the browser).
+
+Finally, we create a last pipeline which will send the closing HTML tags.
+
+What is cool about this approach is that the image requests are executed concurrently. This means that the image HTML tags will be sent to the client as soon as they are available (as soon as we get a response from any of the image requests). We only make one request to our API gateway from the client and we only send one response to the client from our API gateway but the images will be sent in chunks so that they show up one after another in the browser just like if we requested them individually.
+
+We will also notice, in this example, that the order is nondeterministic - meaning that we will (most likely) get a different order in which the images are sent every time we refresh the page. If we wanted to preserve the ordering of the images, we could either send the ordering with the chunks and let the client code render the images on the correct position - or we could set the `:sync` option to `true` in `response` which would then wait for the responses and then send them in the appropriate order.
+
+### More examples
+A collection of example end-points can be found in found [lib/rackla/rackla.ex](https://github.com/AntonFagerberg/rackla/lib/rackla/rackla.ex). This will illustrate additional techniques which can be used in Rackla.
+
+## Function overview
+
+### request
+Takes a single string (URL) or a `Rackla.Request` struct and  executes a HTTP 
+request to the defined server. You can, by using the  `Rackla.Request` struct,
+specify more advanced options for your request such  as which HTTP verb to use
+but also individual connection timeout limits etc.  You can also call this 
+function with a list of strings or `Rackla.Request` structs in order to 
+perform multiple requests concurrently.
+
+This function will return a `Rackla` struct which will contain the results 
+from the request(s) once available or an `:error` tuple in case of failures
+such non-responding servers or DNS lookup failures.
+
+Options:
+ * `:connect_timeout` - Connection timeout limit in milliseconds, default: 
+ `5_000`.
+ * `:receive_timeout` - Receive timeout limit in milliseconds, default: 
+ `5_000`.
+ * `:insecure` - If set to true, SSL certificates will not be checked, 
+ default: `false`.
  
-Note that the `request` function accepts any of the following data-types as its parameter:
+If you specify any options in a `Rackla.Request` struct, these will overwrite
+the options passed to the `request` function for that specific request.
 
-* String (single URL)
-* List of strings (multiple URLs)
-* `Rackla.Request` struct (single request)
-* List of `Rackla.Request` stucts (multiple requests)
+### map
+Returns a new `Rackla` struct, where each encapsulated item is the result of 
+invoking `fun` on each corresponding encapsulated item.
 
-It is also possible to pass `Rackla.Response` structs to the `request` function. When this is done, the response will be directly retransmitted to the consumers as any other request (the request will not be resent to the back-end). One reason for allowing this is behavior is to be able to compose a completed pipeline with a brand new one.
+Takes a `Rackla` struct, applies the specified function to each of the 
+elements encapsulated in it and returns a new `Rackla` struct with the 
+results.
 
-### Timers
-Timers can be used anywhere in the pipeline to log timestamps. The timers can be used between both synchronous and asynchronous functions to determine what happens on which moments in time. On asynchronous calls which follows the protocol defined by Rackla, a log event will be triggered on every message between the Elixir processes.
+Example:
+    Rackla.just_list([1,2,3]) |> Rackla.map(fn(x) -> x * 2 end) |> Rackla.collect
+    [2, 4, 6]
+    
+### flat_map
+Takes a `Rackla` struct, applies the specified function to each of the 
+elements encapsulated in it and returns a new `Rackla` struct with the 
+results. The given function must return a `Rackla` struct.
 
-```elixir
-"https://api.instagram.com/v1/users/self/feed?count=50&access_token=" <> conn.query_string
-|> timer("Got URL")
-|> request
-|> timer("Executed request")
-|> collect_response
-|> timer("Collected response")
-|> Dict.get(:body)
-|> timer("Got body")
-|> Poison.decode!
-|> timer("Decoded JSON")
-|> Dict.get("data")
-|> timer("Extracted data")
-|> Enum.map(&(&1["images"]["standard_resolution"]["url"]))
-|> timer("Mapped image url")
-|> request
-|> timer("Executed request")
-|> transform(binary_to_img)
-|> timer("Added transform function")
-|> response
-|> timer("Responded to query")
-```
+This function is useful when you want to create a new request pipeline based
+on the results of a previous request. In those cases, you can use 
+`Rackla.flat_map` to access the response from the request and call 
+`Rackla.request` inside the function since `Rackla.request` returns a 
+`Rackla` struct.
 
-This will output information to `Logger.info`, example:
+Example:
+    Rackla.just_list([1,2,3]) |> Rackla.flat_map(fn(x) -> Rackla.just(x * 2) end) |> Rackla.collect
+    [2, 4, 6]
+    
 
-```
-14:02:46.800 [info]  {1427, 288566, 800037} [meta] (Added transform function) on #PID<0.519.0>
-14:02:46.800 [info]  {1427, 288566, 800160} [status] (Added transform function) on #PID<0.519.0>
-14:02:46.800 [info]  {1427, 288566, 800228} [headers] (Added transform function) on #PID<0.519.0>
-14:02:46.800 [info]  {1427, 288566, 800272} [chunk] (Added transform function) on #PID<0.519.0>
-14:02:46.800 [info]  {1427, 288566, 800317} [done] (Added transform function) on #PID<0.519.0>
-14:02:46.800 [info]  {1427, 288566, 800467} (Responded to query)
-```
+### reduce
+Invokes fun for each element in the `Rackla` struct passing that element and
+the accumulator acc as arguments. fun's return value is stored in acc. The 
+first element of the collection is used as the initial value of acc (you can 
+also use `Rackla.reduce/3` and specify your own accumulator). Returns the 
+accumulated value inside a `Rackla` struct.
 
-The message consists of (with the Logger information excluded):
+Example:
+    Rackla.just_list([1,2,3]) |> Rackla.reduce(fn (x, acc) -> x + acc end) |> Rackla.collect
+    6
 
-```
-{erlang timestamp} [message type] (optional label) Process Identifier
-```
+### just
+Takes any type an encapsulates it in a `Rackla` struct.
 
-### Compression
-The response can be compressed by utilizing GZip. To enable compression, set `:compress` to `true` in the keyword-list argument in the `response` function.
+Example:
+    Rackla.just([1,2,3]) |> Rackla.map(&IO.inspect/1)
+    [1, 2, 3]
+    
+### just_list
+Takes a list of and encapsulates each of the containing elements separately 
+in a `Rackla` struct.
 
-```elixir
-response(compress: true)
-```
+Example:
+    Rackla.just_list([1,2,3]) |> Rackla.map(&IO.inspect/1)
+    3
+    2
+    1
 
-### Decompression
-When executing requests to a server which replies with compressed data, you have to decompress it yourself before processing it (unless you want to send it directly to the client). If the server uses GZip-compression, then you can use the Zlib module in Erlang to decompress the body, for example by creating a `transform` lambda-function:
+### collect
+Returns the element encapsulated inside a `Rackla` struct, or a list of 
+elemets in case the `Rackla` struct contains many elements.
 
-```elixir
-transform(fn(response) -> Map.update!(response, :body, &:zlib.gunzip/1) end)
-```
+Example:
+    Rackla.just_list([1,2,3]) |> Rackla.collect
+    [1,2,3]
 
-### Working with JSON
-Rackla uses [Poison](https://github.com/devinus/poison) for working with JSON internally. It is a great library which converts JSON-structures to Elixir-structures and vice versa. Poison can of course also be used in the end-points for transforming and manipulating JSON data in the pipeline.
+### join
+Returns a new `Rackla` struct by joining the encapsulated types from two
+`Rackla` structs.
 
-### Working with XML (and other formats)
-There is currently no special XML support (or any other format except JSON). You can request data in any format over HTTP, process it with any third-party library and respond with it - but there are no built in helper functions such as the `concatenate_json` used for JSON.
+Example:
+    Rackla.join(Rackla.just(1), Rackla.just(2)) |> Rackla.collect
+    [1, 2]
+    
+### response
+Converts a `Rackla` struct to a HTTP response and send it to the client by
+using `Plug.Conn`. The `Plug.Conn` will be taken implicitly by looking for a 
+variable named `conn`. If you want to specify which `Plug.Conn` to use, you 
+can use `Rackla.response_conn`.
 
-### Caching
-Rackla has no built in support for caching but you can, for example, use [EchoTeams Erlang memcached client library](https://github.com/EchoTeam/mcd) which we've successfully experimented with.
+Using this macro is the same as writing:
+    conn = response_conn(rackla, conn, options)
 
-### Cross-Origin Resource Sharing (CORS) 
-In order to use CORS in your API gateway, you can use any tool which works with Plug such as [cors_plug](https://github.com/mschae/cors_plug).
-
-## Error handling
-
-Internally, the messages passed between Elixir processes are:
- * `:status` - 1 message
- * `:headers` - 1 message
- * `:meta` - 1 message
- * `:body` - N messages
- * `:done` - 1 message
- 
-However, errors can occur at any point of time between the transmission of these messages. If an error occurs, an `:error` message will be sent. It is guaranteed that no further message will be sent from a producer after an `:error` message has been sent. 
- 
-The reason for sending an `:error` message can be everything from a non-responding back-end server or invalid DNS lookups to invalid code in a `transform` function. Rackla will never raise any exceptions and even the code which the framework user provides inside the `transform` lambda function will be caught and sent as an `:error` message automatically.
-
-This means that the framework user can handle the errors either directly inside a `transform` lambda function or propagate them to the client. The function `concatenate_json` will, unless `body_only: true`, include the error message to the client.
-
-### Logger
-The `:error` message will also be sent to the Logger when it is produced or discovered. There are three variations of how this is handled.
- * An `info` level message will be sent on errors which the user is expected to fix (if he/she wants to). These errors are related to the request such as DNS failures, timeouts etc.
- * An `warn` level message will be sent on errors which can't be fixed. These errors occurs when parts of the data has been sent to the client already or if the connection is lost in the middle of transmission.
- * An `warn` level message will be sent if an `:error` message is silently discarded such as when `concatenate_json(body_only: true)` is invoked.
-
-### Example (error propagation)
-
-```elixir
-get "/proxy/invalid-transform" do
-  invalid_transform = fn(response) ->
-    Dict.get!(response, :nope)
-  end
-  
-  conn.query_string
-  |> request
-  |> transform(invalid_transform)
-  |> concatenate_json
-  |> response
-end
-```
-
-Here we have defined an end-point which will proxy a URL and concatenate the response as JSON. We have defined a lambda function `invalid_transform` which will try to get the non-existing key `:nope`. This exception will be caught by Rackla and it will be propagated down to the client:
-
-```json
-[
-   {
-      "status":null,
-      "meta":{
-
-      },
-      "headers":{
-
-      },
-      "error":{
-         "self":false,
-         "module":"Elixir.Dict",
-         "function":"get!",
-         "arity":2,
-         "__exception__":true
-      },
-      "body":""
-   }
-]
-```
-
-### Router errors
-Note that errors regarding the routing and `Plug` have to be dealt with outside Rackla. One approach is to check out the [Plug.ErrorHandler](http://hexdocs.pm/plug/Plug.ErrorHandler.html).
-
-## Learn more
-For more information, you can see some test end-points defined in [lib/router.ex](https://github.com/AntonFagerberg/rackla/blob/master/lib/router.ex). The file [lib/rackla/rackla.ex](https://github.com/AntonFagerberg/rackla/blob/master/lib/rackla/rackla.ex)  contains documentation for all functions - the documentation is also available online (TODO!).
+Options:
+ * `:compress` - Compresses the response by applying a gzip compression to it.
+ When this option is used, the entire response has to be sent in one chunk. 
+ You can't reuse the `conn` to send any more data after `Rackla.response` with
+ `:compress` set to `true` has been invoked.
+ * `json` - If set to true, the encapsulated elements will be converted into
+ a JSON encoded string before they are sent to the client. This will also set
+ the header "Content-Type" to the appropriate "application/json".
 
 ## The MIT License (MIT)
 

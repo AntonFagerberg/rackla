@@ -87,13 +87,19 @@ defmodule Router do
   # This will rewrite the JSON responses from the OpenWeatherMap API.
   # Example: /temperature?Malmo,se|Lund,se|Copenhagen,dk
   get "/temperature" do
-    temperature_extractor = fn(weather_response) ->
-      case Poison.decode(weather_response) do
-        {:ok, json_decoded} ->
-          Map.put(%{}, json_decoded["name"], json_decoded["main"]["temp"])
-
+    temperature_extractor = fn(http_response) ->
+      case http_response do
         {:error, reason} ->
-          "Failed to execute request: #{reason}"
+          "HTTP request failed because: #{reason}"
+        
+        ok_resonse ->
+          case Poison.decode(ok_resonse) do
+            {:ok, json_decoded} ->
+              Map.put(%{}, json_decoded["name"], json_decoded["main"]["temp"])
+
+            {:error, reason} ->
+              "Failed to decode response because: #{reason}"
+          end
       end
     end
 

@@ -27,8 +27,8 @@ defmodule Rackla do
    * `:insecure` - If set to true, SSL certificates will not be checked, 
    default: `false`.
    
-   If you specify any options in a `Rackla.Request` struct, these will overwrite
-   the options passed to the `request` function for that specific request.
+  If you specify any options in a `Rackla.Request` struct, these will overwrite
+  the options passed to the `request` function for that specific request.
   """
   @spec request(String.t | Rackla.Request.t | [String.t] | [Rackla.Request.t], Dict.t) :: t
   def request(requests, options \\ [])
@@ -102,7 +102,7 @@ defmodule Rackla do
   
   Example:
       Rackla.just([1,2,3]) |> Rackla.map(&IO.inspect/1)
-      # [1, 2, 3]
+      [1, 2, 3]
   """
   @spec just(any | [any]) :: t
   def just(thing) do
@@ -119,17 +119,17 @@ defmodule Rackla do
   end
 
   @doc """
-  Takes a list of any types and encapsulates each of the containing elements
-  separately in a `Rackla` struct.
+  Takes a list of and encapsulates each of the containing elements separately 
+  in a `Rackla` struct.
   
   Example:
-      Rackla.just_enum([1,2,3]) |> Rackla.map(&IO.inspect/1)
-      # 3
-      # 2
-      # 1
+      Rackla.just_list([1,2,3]) |> Rackla.map(&IO.inspect/1)
+      3
+      2
+      1
   """
-  @spec just_enum([any]) :: t
-  def just_enum(things) when is_list(things) do
+  @spec just_list([any]) :: t
+  def just_list(things) when is_list(things) do
     things
     |> Enum.map(&just/1)
     |> Enum.reduce(&(join &2, &1))
@@ -144,7 +144,7 @@ defmodule Rackla do
   results.
   
   Example:
-      Rackla.just_enum([1,2,3]) |> Rackla.map(fn(x) -> x * 2 end) |> Rackla.collect
+      Rackla.just_list([1,2,3]) |> Rackla.map(fn(x) -> x * 2 end) |> Rackla.collect
       [2, 4, 6]
   """
   @spec map(t, (any -> any)) :: t
@@ -192,7 +192,7 @@ defmodule Rackla do
   `Rackla` struct.
   
   Example:
-      Rackla.just_enum([1,2,3]) |> Rackla.flat_map(fn(x) -> Rackla.just(x * 2) end) |> Rackla.collect
+      Rackla.just_list([1,2,3]) |> Rackla.flat_map(fn(x) -> Rackla.just(x * 2) end) |> Rackla.collect
       [2, 4, 6]
   """
   @spec flat_map(t, (any -> t)) :: t
@@ -234,7 +234,7 @@ defmodule Rackla do
   the accumulated value inside a `Rackla` struct.
   
   Example:
-      Rackla.just_enum([1,2,3]) |> Rackla.reduce(fn (x, acc) -> x + acc end) |> Rackla.collect
+      Rackla.just_list([1,2,3]) |> Rackla.reduce(fn (x, acc) -> x + acc end) |> Rackla.collect
       6
   """
   @spec reduce(t, (any, any -> any)) :: t
@@ -257,7 +257,7 @@ defmodule Rackla do
   Returns  the accumulated value inside a `Rackla` struct.
   
   Example:
-      Rackla.just_enum([1,2,3]) |> Rackla.reduce(10, fn (x, acc) -> x + acc end) |> Rackla.collect
+      Rackla.just_list([1,2,3]) |> Rackla.reduce(10, fn (x, acc) -> x + acc end) |> Rackla.collect
       16
   """
   def reduce(%Rackla{} = rackla, acc, fun) when is_function(fun, 2) do
@@ -316,7 +316,7 @@ defmodule Rackla do
   elemets in case the `Rackla` struct contains many elements.
   
   Example:
-      Rackla.just_enum([1,2,3]) |> Rackla.collect
+      Rackla.just_list([1,2,3]) |> Rackla.collect
       [1,2,3]
   """
   @spec collect(t) :: [any] | any
