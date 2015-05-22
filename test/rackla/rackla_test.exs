@@ -280,7 +280,7 @@ defmodule Rackla.Tests do
 
     response_item =
       input
-      |> just_list
+      |> just_enum
       |> reduce(reduce_function)
       |> collect
 

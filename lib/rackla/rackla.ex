@@ -86,8 +86,8 @@ defmodule Rackla do
     %Rackla{producers: [producers]}
   end
 
-  @spec just_list([any]) :: t
-  def just_list(things) when is_list(things) do
+  @spec just_enum([any]) :: t
+  def just_enum(things) when is_list(things) do
     things
     |> Enum.map(&just/1)
     |> Enum.reduce(&join/2)
