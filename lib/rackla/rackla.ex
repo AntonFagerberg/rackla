@@ -1,5 +1,6 @@
 defmodule Rackla do
-  @moduledoc File.read!("README.md")
+  @moduledoc Regex.replace(~r/```(elixir|json)(\n|.*)```/rs, File.read!("README.md"), 
+  fn(_, _, code) -> Regex.replace(~r/^/m, code, "    ") end)
   
   import Plug.Conn
   require Logger
