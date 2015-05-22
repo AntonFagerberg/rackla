@@ -90,7 +90,7 @@ defmodule Rackla do
   def just_enum(things) when is_list(things) do
     things
     |> Enum.map(&just/1)
-    |> Enum.reduce(&join/2)
+    |> Enum.reduce(&(join &2, &1))
   end
 
   @spec map(t, (any -> any)) :: t
