@@ -416,7 +416,7 @@ defmodule Rackla.Tests do
         |> collect
       end)
 
-      assert_receive {:EXIT, pid, {%RuntimeError{message: "oops"}, _rest}}, 5_000
+      assert_receive {:EXIT, _pid, {%RuntimeError{message: "oops"}, _rest}}, 5_000
       Logger.flush()
     end)
   end
@@ -461,7 +461,7 @@ defmodule Rackla.Tests do
         |> collect
       end)
 
-      assert_receive {:EXIT, pid, {%RuntimeError{message: "oops"}, _rest}}, 5_000
+      assert_receive {:EXIT, _pid, {%RuntimeError{message: "oops"}, _rest}}, 5_000
       Logger.flush()
     end)
   end
