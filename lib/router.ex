@@ -153,6 +153,7 @@ defmodule Router do
     |> response
   end
 
+  # This will be called when non of the above end-points match.
   match _ do
    send_resp(conn, 404, "end-point not found")
   end
