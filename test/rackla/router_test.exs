@@ -76,7 +76,8 @@ defmodule Rackla.RouterTest do
   test "Proxy with compression" do
     conn =
       :get
-      |> conn("/test/proxy/gzip?http://localhost:#{@test_router_port}/api/text/foo-bar", nil, [headers: [{"accept-encoding", "gzip"}]])
+      |> conn("/test/proxy/gzip?http://localhost:#{@test_router_port}/api/text/foo-bar")
+      |> put_req_header("accept-encoding", "gzip")
       |> TestRouter.call(@opts)
 
     assert conn.state == :chunked
@@ -84,7 +85,7 @@ defmodule Rackla.RouterTest do
     assert conn.scheme == :http
     assert conn.method == "GET"
     assert :zlib.gunzip(conn.resp_body) == "foo-bar"
-    assert get_resp_header(conn, "Content-Encoding") == ["gzip"]
+    assert get_resp_header(conn, "content-encoding") == ["gzip"]
   end
   
   test "Proxy with compression - missing accept-encoding" do
@@ -111,7 +112,7 @@ defmodule Rackla.RouterTest do
     assert conn.scheme == :http
     assert conn.method == "GET"
     assert :zlib.gunzip(conn.resp_body) == "foo-bar"
-    assert get_resp_header(conn, "Content-Encoding") == ["gzip"]
+    assert get_resp_header(conn, "content-encoding") == ["gzip"]
   end
 
   test "Proxy with single JSON" do
@@ -125,7 +126,7 @@ defmodule Rackla.RouterTest do
     assert conn.scheme == :http
     assert conn.method == "GET"
     assert conn.resp_body == Poison.encode!(%{foo: "bar"})
-    assert get_resp_header(conn, "Content-Type") == ["application/json"]
+    assert get_resp_header(conn, "content-type") == ["application/json"]
   end
 
   test "Proxy with JSON list" do
@@ -139,6 +140,6 @@ defmodule Rackla.RouterTest do
     assert conn.scheme == :http
     assert conn.method == "GET"
     assert conn.resp_body == Poison.encode!([%{foo: "bar"}, "hello!", 1, [1.0, 2.0, 3.0]])
-    assert get_resp_header(conn, "Content-Type") == ["application/json"]
+    assert get_resp_header(conn, "content-type") == ["application/json"]
   end
 end

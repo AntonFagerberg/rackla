@@ -376,7 +376,7 @@ defmodule Rackla do
    request headers, you can set `:compress` to `:force`.
    * `:json` - If set to true, the encapsulated elements will be converted into
    a JSON encoded string before they are sent to the client. This will also set
-   the header "Content-Type" to the appropriate "application/json".
+   the header "content-type" to the appropriate "application/json".
   """
   defmacro response(rackla, options \\ []) do
     quote do
@@ -561,12 +561,12 @@ defmodule Rackla do
           
           if allow_gzip || compress == :force do
             response_binary = :zlib.gzip(response_binary)
-            headers = Dict.merge(headers, %{"Content-Encoding" => "gzip"})
+            headers = Dict.merge(headers, %{"content-encoding" => "gzip"})
           end
         end
 
         if Dict.get(options, :json, false) do
-          headers = Dict.merge(headers, %{"Content-Type" => "application/json"})
+          headers = Dict.merge(headers, %{"content-type" => "application/json"})
         end
 
         chunk_status =
