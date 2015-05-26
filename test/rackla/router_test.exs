@@ -72,10 +72,38 @@ defmodule Rackla.RouterTest do
     assert conn.method == "GET"
     assert conn.resp_body == "okfoo-bar"
   end
+  
   test "Proxy with compression" do
     conn =
       :get
+      |> conn("/test/proxy/gzip?http://localhost:#{@test_router_port}/api/text/foo-bar", nil, [headers: [{"accept-encoding", "gzip"}]])
+      |> TestRouter.call(@opts)
+
+    assert conn.state == :chunked
+    assert conn.status == 200
+    assert conn.scheme == :http
+    assert conn.method == "GET"
+    assert :zlib.gunzip(conn.resp_body) == "foo-bar"
+    assert get_resp_header(conn, "Content-Encoding") == ["gzip"]
+  end
+  
+  test "Proxy with compression - missing accept-encoding" do
+    conn =
+      :get
       |> conn("/test/proxy/gzip?http://localhost:#{@test_router_port}/api/text/foo-bar")
+      |> TestRouter.call(@opts)
+
+    assert conn.state == :chunked
+    assert conn.status == 200
+    assert conn.scheme == :http
+    assert conn.method == "GET"
+    assert conn.resp_body == "foo-bar"
+  end
+  
+  test "Proxy with compression, forced - missing accept-encoding)" do
+    conn =
+      :get
+      |> conn("/test/proxy/gzip/force?http://localhost:#{@test_router_port}/api/text/foo-bar")
       |> TestRouter.call(@opts)
 
     assert conn.state == :chunked

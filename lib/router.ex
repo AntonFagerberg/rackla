@@ -31,6 +31,9 @@ defmodule Router do
 
   # Call end-point with any URL to proxy it.
   # HTTP response will be compressed with GZip compression.
+  # When compress is set to true, it will check the content-encoding to make
+  # sure the client accepts gzip encoding. You can set compress to :force to
+  # disable this check and always send gzip'ed content.
   # Example: /proxy/gzip?http://ip.jsontest.com/
   get "/proxy/gzip" do
     conn.query_string

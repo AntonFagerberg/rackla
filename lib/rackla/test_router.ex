@@ -38,6 +38,12 @@ defmodule TestRouter do
     |> request
     |> response(compress: true)
   end
+  
+  get "/test/proxy/gzip/force" do
+    conn.query_string
+    |> request
+    |> response(compress: :force)
+  end
 
   get "/test/json" do
     just(%{foo: "bar"})

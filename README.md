@@ -145,7 +145,7 @@ Here's what the pipeline will do:
  * Map over the list and convert the cities into a list of URLs to call using the OpenWeatherMap API.
  * Request all URLs, this will return a `Rackla` struct which will contain (when ready) the response or an `:error` tuple on failure for each URL.
  * Map over the results using our function `temperature_extractor` (explained below).
- * Respond to the client. We use the options `json` to encode our response in JSON format and set the appropriate headers. We can also use `compress` in order to compress the result with gzip compression.
+ * Respond to the client. We use the options `json` to encode our response in JSON format and set the appropriate headers. We can also use `:compress` in order to compress the result with gzip compression (when `:compress` is `true`, it will check the headers to make sure that the client accepts gzip - you can also set it to `:force` to always respond with gzip).
  
 So let's walk through what the function `temperature_extractor` does. First of all, we pattern match to make sure that our HTTP request hasn't failed. If it has failed, we simply return a string with the reason for the failure. If our HTTP request has succeed, we try to decode it from JSON format using the library Poison. If the decoding is successful, we create a new Elixir map containing the name and the temperature for the response. This will be, for example, `%{"Malmo" => 289.751}` in one of the responses. The `response` function will later be able to encode this Elixir map into a JSON map automatically.
 
@@ -337,7 +337,10 @@ Options:
  * `:compress` - Compresses the response by applying a gzip compression to it.
  When this option is used, the entire response has to be sent in one chunk. 
  You can't reuse the `conn` to send any more data after `Rackla.response` with
- `:compress` set to `true` has been invoked.
+ `:compress` set to `true` has been invoked. When set to `true`, Rackla will
+ check the request header `content-encoding` to make sure the client accepts
+ gzip responses. If you want to respond with gzip without checking the
+ request headers, you can set `:compress` to `:force`.
  * `:json` - If set to true, the encapsulated elements will be converted into
  a JSON encoded string before they are sent to the client. This will also set
  the header "Content-Type" to the appropriate "application/json".

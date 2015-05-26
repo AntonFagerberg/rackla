@@ -370,7 +370,10 @@ defmodule Rackla do
    * `:compress` - Compresses the response by applying a gzip compression to it.
    When this option is used, the entire response has to be sent in one chunk. 
    You can't reuse the `conn` to send any more data after `Rackla.response` with
-   `:compress` set to `true` has been invoked.
+   `:compress` set to `true` has been invoked. When set to `true`, Rackla will
+   check the request header `content-encoding` to make sure the client accepts
+   gzip responses. If you want to respond with gzip without checking the
+   request headers, you can set `:compress` to `:force`.
    * `:json` - If set to true, the encapsulated elements will be converted into
    a JSON encoded string before they are sent to the client. This will also set
    the header "Content-Type" to the appropriate "application/json".
@@ -548,10 +551,18 @@ defmodule Rackla do
     case response_encoded do
       {:ok, response_binary} ->
         headers = Dict.get(options, :headers, %{})
-
-        if Dict.get(options, :compress, false) do
-          response_binary = :zlib.gzip(response_binary)
-          headers = Dict.merge(headers, %{"Content-Encoding" => "gzip"})
+        
+        compress = Dict.get(options, :compress, false)
+        
+        if compress do
+          allow_gzip = 
+            Plug.Conn.get_req_header(conn, "accept-encoding")
+            |> Enum.any?(&(Regex.match?(~r/(^(\*|gzip)(;q=(1$|1\.0{1,3}$|0\.[1-9]{1,3}$)|$))/, &1)))
+          
+          if allow_gzip || compress == :force do
+            response_binary = :zlib.gzip(response_binary)
+            headers = Dict.merge(headers, %{"Content-Encoding" => "gzip"})
+          end
         end
 
         if Dict.get(options, :json, false) do
