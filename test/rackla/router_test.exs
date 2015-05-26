@@ -126,7 +126,7 @@ defmodule Rackla.RouterTest do
     assert conn.scheme == :http
     assert conn.method == "GET"
     assert conn.resp_body == Poison.encode!(%{foo: "bar"})
-    assert get_resp_header(conn, "content-type") == ["application/json"]
+    assert get_resp_header(conn, "content-type") == ["application/json; charset=utf-8"]
   end
 
   test "Proxy with JSON list" do
@@ -140,6 +140,6 @@ defmodule Rackla.RouterTest do
     assert conn.scheme == :http
     assert conn.method == "GET"
     assert conn.resp_body == Poison.encode!([%{foo: "bar"}, "hello!", 1, [1.0, 2.0, 3.0]])
-    assert get_resp_header(conn, "content-type") == ["application/json"]
+    assert get_resp_header(conn, "content-type") == ["application/json; charset=utf-8"]
   end
 end

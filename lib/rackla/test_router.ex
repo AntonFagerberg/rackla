@@ -68,7 +68,7 @@ defmodule TestRouter do
     json = Poison.encode!(%{foo: "bar"})
 
     conn
-    |> put_resp_header("Content-Type", "application/json")
+    |> put_resp_content_type("application/json")
     |> send_resp(200, json)
   end
 
@@ -93,7 +93,7 @@ defmodule TestRouter do
     json = Map.put(%{foo: "bar", baz: "qux"}, key, value) |> Poison.encode!
 
     conn
-    |> put_resp_header("Content-Type", "application/json")
+    |> put_resp_content_type("application/json")
     |> send_resp(200, json)
   end
 

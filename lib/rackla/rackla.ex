@@ -566,7 +566,7 @@ defmodule Rackla do
         end
 
         if Dict.get(options, :json, false) do
-          headers = Dict.merge(headers, %{"content-type" => "application/json"})
+          conn = put_resp_content_type(conn, "application/json")
         end
 
         chunk_status =
