@@ -37,24 +37,7 @@ defmodule Router do
     |> request
     |> response(compress: true)
   end
-
-  # Call end-point with an arbitrary amount of URLs separated by "|".
-  # Example: /proxy/multi?http://ip.jsontest.com/|http://api.openweathermap.org/data/2.5/weather?q=Malmo,se
-  get "/proxy/multi" do
-    String.split(conn.query_string, "|")
-    |> request
-    |> response
-  end
-
-  # Call end-point with an arbitrary amount of URLs separated by "|".
-  # Responses will be orderd in the same order as the URLs are requested.
-  # Example: /proxy/multi/sync?http://ip.jsontest.com/|http://api.openweathermap.org/data/2.5/weather?q=Malmo,se
-  get "/proxy/multi/sync" do
-    String.split(conn.query_string, "|")
-    |> request
-    |> response(sync: true)
-  end
-
+  
   # Call end-point with any URL to proxy it.
   # A custom header will be sent with the response.
   # Example: /proxy/set-headers?http://ip.jsontest.com/
@@ -71,6 +54,24 @@ defmodule Router do
     conn.query_string
     |> request
     |> response(json: true)
+  end
+  
+  # Call end-point with an arbitrary amount of URLs separated by "|".
+  # Responses will be sent in nondeterministic order.
+  # Example: /proxy/multi?http://ip.jsontest.com/|http://api.openweathermap.org/data/2.5/weather?q=Malmo,se
+  get "/proxy/multi" do
+    String.split(conn.query_string, "|")
+    |> request
+    |> response
+  end
+
+  # Call end-point with an arbitrary amount of URLs separated by "|".
+  # Responses will be orderd in the same order as the URLs are requested.
+  # Example: /proxy/multi/sync?http://ip.jsontest.com/|http://api.openweathermap.org/data/2.5/weather?q=Malmo,se
+  get "/proxy/multi/sync" do
+    String.split(conn.query_string, "|")
+    |> request
+    |> response(sync: true)
   end
 
   # Call end-point with an arbitrary amount of URLs separated by "|".
