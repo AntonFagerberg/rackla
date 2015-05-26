@@ -2,7 +2,7 @@
 
 Rackla is an open source framework for building API gateways. When we say API gateway, we mean to proxy and potentially enhance the communication by transforming the data sent between servers and HTTP clients (such as browsers). The communication can be enhanced by throwing away unnecessary data, concatenating multiple requests into a single request or converting the data between different formats. You can also use this to change existing APIs so that they work in a different way, or you can merge any amount of existing APIs into a single new one.
 
-You can, with Rackla, execute multiple HTTP-requests and transform them in any way you want - asynchronously from back-end to client. The results, encapsulated in the `Rackla` struct, can be transformed with well known functions such as `map`, `flat_map` and `reduce`. By using Elixir, you can express your new API end-points as pipelines which start with requests that are piped in to a transforming function and finally piped into a response.
+You can asynchronously execute multiple HTTP-requests and transform them in any way you want. The results, encapsulated in the `Rackla` struct, can be transformed with well known functions such as `map`, `flat_map` and `reduce`. By using Elixir, you can express your new API end-points as pipelines which start with requests that are piped in to a transforming function and finally piped into a response.
 
 Rackla utilizes [Plug](https://github.com/elixir-lang/plug) to expose new end-points and communicate with clients over HTTP. Internally, it uses [Hackney](https://github.com/benoitc/hackney) to make HTTP requests and [Poison](https://github.com/devinus/poison) for dealing with JSON. A big thank you to everyone involved in these projects!
 
@@ -18,7 +18,7 @@ defp deps do
 end
 ```
 
-However, this setup can be a bit complicated, especially if you are not used to Plug and it is therefore recommended that you do a "full installation" for your projects (described below) which will get you up an running in no time!
+However, this setup can be a bit complicated, especially if you are not used to work with Plug and it is therefore recommended that you do a "full installation" for your project (described below) which will get you up an running in no time!
 
 ## Full installation (clone example project)
 
@@ -26,8 +26,6 @@ You can clone [this GitHub repository](https://github.com/AntonFagerberg/rackla)
 
 ### Starting the application
 The application will be started automatically when running `iex -S mix`. You can also start it by running `mix server`. By default, it will start on port 4000, but you can change the port either from the file `config/config.exs` or by creating an environment variable named PORT.
-
-You can also create an escript with `mix escript.build` and then run the file `rackla`.
 
 ### Deploy to Heroku
 The [Heroku Buildpack for Elixir](https://github.com/HashNuke/heroku-buildpack-elixir) works out of the box for Rackla when doing a full installation.
@@ -145,7 +143,7 @@ Here's what the pipeline will do:
  * Get the query string from `conn` (Plug), in this example it will be the string: `"malmo,se|halmstad,se|copenhagen,dk|san francisco,us|stockholm,se"`.
  * Split the string on `|` to get a list instead: `["malmo,se", "halmstad,se", "copenhagen,dk", "san francisco,us", "stockholm,se"]`.
  * Map over the list and convert the cities into a list of URLs to call using the OpenWeatherMap API.
- * Request all URLs, this will return a `Rackla` struct which will contain (when ready) the responses or an `:error` tuple on failure.
+ * Request all URLs, this will return a `Rackla` struct which will contain (when ready) the response or an `:error` tuple on failure for each URL.
  * Map over the results using our function `temperature_extractor` (explained below).
  * Respond to the client. We use the options `json` to encode our response in JSON format and set the appropriate headers. We can also use `compress` in order to compress the result with gzip compression.
  
@@ -154,7 +152,7 @@ So let's walk through what the function `temperature_extractor` does. First of a
 Done! That's all we need to do to make it work!
 
 ### Instagram (Base64 encoded images)
-In this example, we will instead of providing an API, actually serve an entire HTML page that we can view in our browser. This example illustrates how we can make recursive requests and work with asynchronous responses.
+In this example, we will instead of providing an API, actually serve an entire HTML page that we can view in our browser. This example illustrates how we can make recursive requests and work with chunked responses.
 
 ```elixir
 get "/instagram" do
@@ -199,13 +197,13 @@ get "/instagram" do
 end
 ```
     
-Once again, let's go through the code to see what is happening. We start by exposing the end-point `/instagram` as we normally do in Plug. Then we define the first of three pipelines. We use some HTML code in a string, convert it into a `Rackla` struct with the function `just` and use `response` to send it to the client. 
+Once again, let's go through the code to see what is happening. We start by exposing the end-point `/instagram` as we normally do in Plug. Then we define the first of three pipelines. We store some HTML code in a string, convert it into a `Rackla` struct with the function `just` and use `response` to send it to the client. 
 
-After we've responded with the HTML code, we can move on to the big middle pipeline. In it, we will call the an Instagram API end-point - the actual response can be seen here: [instagram.com/developer/endpoints/users/#get_users_feed](https://instagram.com/developer/endpoints/users/#get_users_feed). We have to pass a access token to the Instagram API so we let the browser supply it via the query string and add it to the URL. We call `request` with the URL and then use `flat_map`. The reason for using `flat_map` is because it gives us an easy way to create new requests based on the responses from previous requests. 
+After we've responded with the HTML code, we can move on to the big middle pipeline. In it, we will call the an Instagram API end-point - the actual response can be seen here: [instagram.com/developer/endpoints/users/#get_users_feed](https://instagram.com/developer/endpoints/users/#get_users_feed). We have to pass an access token to the Instagram API so we let the user supply it via the query string in the browser and add it to the Instagram URL. We call `request` with the URL and then use `flat_map`. The reason for using `flat_map` is because it gives us an easy way to create new requests based on the responses from previous requests. 
 
-If we get a response from the Instagram API, we decode it from JSON format to an Elixir data structure with Poison. We then extract the list stored in the key `"data"` in the Instagram response. This will give us a list of items from our Instagram feed. We then map over these items and extract the URL for the images in standard resolution which will give us a list or URLs to images. We can now pipe this list in to the `request` function to fetch all these images. 
+If we get a response from the Instagram API, we decode it from JSON format to an Elixir data structure with Poison. We then extract the list stored in the key `"data"` in the Instagram response. This will give us a list of items from our Instagram feed. We then map over these items and extract the URL for the images in standard resolution which will give us a list of URLs pointing to images. We can now pipe this list in to the `request` function to fetch all these images. 
 
-Now, we map over the results - the results will now be binary image data! We can take this binary image data, Base64 encode it and put it inside a HTML image tag. By doing so, the browser can render the response as images directly on our page. In the the "outer" pipeline, we end it with the `response` function which will send these HTML image tags to the client (the browser).
+Now, we map over the results - the results will now be binary image data! We can take this binary image data, Base64 encode it and place it inside a HTML image tag. By doing so, the browser can render the response chunks as images directly on our page. In the the "outer" pipeline, we end it with the `response` function which will send these HTML image tags to the client (the browser).
 
 Finally, we create a last pipeline which will send the closing HTML tags.
 
@@ -214,7 +212,7 @@ What is cool about this approach is that the image requests are executed concurr
 We will also notice, in this example, that the order is nondeterministic - meaning that we will (most likely) get a different order in which the images are sent every time we refresh the page. If we wanted to preserve the ordering of the images, we could either send the ordering with the chunks and let the client code render the images on the correct position - or we could set the `:sync` option to `true` in `response` which would then wait for the responses and then send them in the appropriate order.
 
 ### More examples
-A collection of example end-points can be found in found [lib/rackla/rackla.ex](https://github.com/AntonFagerberg/rackla/lib/rackla/rackla.ex). This will illustrate additional techniques which can be used in Rackla.
+A collection of example end-points can be found in found [lib/rackla/rackla.ex](https://github.com/AntonFagerberg/rackla/blob/master/lib/router.ex) which illustrates additional techniques that can be used in Rackla.
 
 ## Function overview
 
@@ -274,8 +272,8 @@ Rackla.just_list([1,2,3]) |> Rackla.flat_map(fn(x) -> Rackla.just(x * 2) end) |>
 
 ### reduce
 Invokes fun for each element in the `Rackla` struct passing that element and
-the accumulator acc as arguments. `fun`s return value is stored in acc. The 
-first element of the collection is used as the initial value of acc (you can 
+the accumulator `acc` as arguments. `fun`s return value is stored in `acc`. The 
+first element of the collection is used as the initial value of `acc` (you can 
 also use `Rackla.reduce/3` and specify your own accumulator). Returns the 
 accumulated value inside a `Rackla` struct.
 
@@ -317,7 +315,7 @@ Rackla.just_list([1,2,3]) |> Rackla.collect
 ```
 
 ### join
-Returns a new `Rackla` struct by joining the encapsulated types from two
+Returns a new `Rackla` struct by joining the encapsulated elements from two
 `Rackla` structs.
 
 Example:

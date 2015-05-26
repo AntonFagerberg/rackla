@@ -230,8 +230,8 @@ defmodule Rackla do
 
   @doc """
   Invokes fun for each element in the `Rackla` struct passing that element and
-  the accumulator acc as arguments. `fun`s return value is stored in acc. The 
-  first element of the collection is used as the initial value of acc. Returns 
+  the accumulator `acc` as arguments. `fun`s return value is stored in `acc`. The 
+  first element of the collection is used as the initial value of `acc`. Returns 
   the accumulated value inside a `Rackla` struct.
   
   Example:
@@ -254,7 +254,7 @@ defmodule Rackla do
 
   @doc """
   Invokes fun for each element in the `Rackla` struct passing that element and
-  the accumulator acc as arguments. fun's return value is stored in acc.  
+  the accumulator `acc` as arguments. fun's return value is stored in `acc`.  
   Returns  the accumulated value inside a `Rackla` struct.
   
   Example:
@@ -345,7 +345,7 @@ defmodule Rackla do
   end
 
   @doc """
-  Returns a new `Rackla` struct by joining the encapsulated types from two
+  Returns a new `Rackla` struct by joining the encapsulated elements from two
   `Rackla` structs.
   
   Example:
