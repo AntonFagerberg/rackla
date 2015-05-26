@@ -153,7 +153,7 @@ defmodule Router do
           end
       end
     end)
-    |> response
+    |> response(sync: true)
 
     "</body></html>"
     |> just

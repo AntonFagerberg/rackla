@@ -386,10 +386,13 @@ defmodule Rackla do
   """
   @spec response_conn(t, Plug.Conn.t, Dict.t) :: Plug.Conn.t
   def response_conn(%Rackla{} = rackla, conn, options \\ []) do
-    if Dict.get(options, :compress, false) || Dict.get(options, :json, false) || Dict.get(options, :sync, false) do
-      response_sync(rackla, conn, options)
-    else
-      response_async(rackla, conn, options)
+    cond do
+      Dict.get(options, :compress, false) || Dict.get(options, :json, false) ->
+        response_sync(rackla, conn, options)
+      Dict.get(options, :sync, false) ->
+        response_sync_chunk(rackla, conn, options)
+      true ->
+        response_async(rackla, conn, options)
     end
   end
 
@@ -459,6 +462,36 @@ defmodule Rackla do
           end
         end
     end
+  end
+  
+  @spec response_sync_chunk(t, Plug.Conn.t, Dict.t) :: Plug.Conn.t
+  defp response_sync_chunk(%Rackla{} = rackla, conn, options) do
+    unless (conn.state == :chunked) do
+      conn =
+        conn
+        |> set_headers(Dict.get(options, :headers, %{}))
+        |> send_chunked(Dict.get(options, :status, 200))
+    end
+    
+    Enum.reduce(prepare_chunks(rackla), conn, fn(pid, conn) ->
+      receive do
+        {^pid, {:rackla, nested_rackla}} ->
+          response_sync_chunk(nested_rackla, conn, options)
+          
+        {^pid, thing} ->
+          if elem(thing, 0) == :ok, do: thing = elem(thing, 1)
+          unless is_binary(thing), do: response = inspect(thing)
+          
+          case chunk(conn, thing) do
+            {:ok, new_conn} ->
+              new_conn
+      
+            {:error, reason} ->
+              warn_response(reason)
+              conn
+          end
+      end
+    end)
   end
 
   @spec response_sync(t, Plug.Conn.t, Dict.t) :: Plug.Conn.t
