@@ -177,7 +177,7 @@ get "/instagram" do
             |> Rackla.map(fn(img_data) ->
               case img_data do
                 {:error, error} ->
-                  just(error)
+                  error
 
                 _ ->
                   "<img src=\"data:image/jpeg;base64,#{Base.encode64(img_data)}\" height=\"150px\" width=\"150px\">"
