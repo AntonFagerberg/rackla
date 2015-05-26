@@ -214,6 +214,27 @@ We will also notice, in this example, that the order is nondeterministic - meani
 ### More examples
 A collection of example end-points can be found in found [lib/rackla/rackla.ex](https://github.com/AntonFagerberg/rackla/blob/master/lib/router.ex) which illustrates additional techniques that can be used in Rackla.
 
+## The Rackla struct
+The `Rackla` struct is the type used in all of Rackla's functions. Internally, it consists of a list of Elixir processes which communicate with message passing according to a protocol defined inside Rackla (these processes can in contain even more nested `Rackla` structs). The `Rackla` struct should never be modified directly!
+
+The `Rackla` struct is created with `request` which converts one or many HTTP requests to a single `Rackla` struct. You can also encapsulate normal Elixir types in a `Rackla` struct with the functions `just` or `just_list`.
+
+Most functions, like `map`, `flat_map` and `reduce`, defined in Rackla will take a `Rackla` struct and return a new `Rackla` struct.
+
+The `response` function converts the `Rackla` struct to a HTTP response which is sent to the client by utilizing `Plug`. You can also convert a `Rackla` struct into "normal" Elixir types with the function `collect`.
+
+It is important to note that once a `Rackla` struct has been used, it is no longer valid:
+
+```elixir
+a = Rackla.just(1)
+b = a |> Rackla.map(&(&1 + 1))
+# a is now "dead" and can't be used anymore
+```
+
+Under normal circumstances, the `Rackla` struct should be "invisible". Think of it as the box which the data is transported inside and that all the functions you use automatically opens the box, takes out the value for you and then puts it in a new box when you're done with it.
+
+(Or simply think of it as a monad if you're comfortable with that.)
+
 ## Function overview
 
 ### request
