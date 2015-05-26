@@ -398,12 +398,7 @@ defmodule Rackla do
 
   @spec response_async(t, Plug.Conn.t, Dict.t) :: Plug.Conn.t
   defp response_async(%Rackla{} = producers, conn, options) do
-    unless (conn.state == :chunked) do
-      conn =
-        conn
-        |> set_headers(Dict.get(options, :headers, %{}))
-        |> send_chunked(Dict.get(options, :status, 200))
-    end
+    conn = prepare_conn(conn, Dict.get(options, :status, 200), Dict.get(options, :headers, %{}))
 
     prepare_chunks(producers)
     |> send_chunks(conn)
@@ -464,14 +459,20 @@ defmodule Rackla do
     end
   end
   
+  @spec prepare_conn(Plug.Conn.t, Integer, Dict.t) :: Plug.Conn.t
+  defp prepare_conn(conn, status, headers) do
+    if (conn.state == :chunked) do
+      conn
+    else
+      conn
+      |> set_headers(Dict.merge(%{"Server" => "Rackla"}, headers))
+      |> send_chunked(status)
+    end
+  end
+  
   @spec response_sync_chunk(t, Plug.Conn.t, Dict.t) :: Plug.Conn.t
   defp response_sync_chunk(%Rackla{} = rackla, conn, options) do
-    unless (conn.state == :chunked) do
-      conn =
-        conn
-        |> set_headers(Dict.get(options, :headers, %{}))
-        |> send_chunked(Dict.get(options, :status, 200))
-    end
+    conn = prepare_conn(conn, Dict.get(options, :status, 200), Dict.get(options, :headers, %{}))
     
     Enum.reduce(prepare_chunks(rackla), conn, fn(pid, conn) ->
       receive do
@@ -558,9 +559,7 @@ defmodule Rackla do
         end
 
         chunk_status =
-          conn
-          |> set_headers(headers)
-          |> send_chunked(Dict.get(options, :status, 200))
+          prepare_conn(conn, Dict.get(options, :status, 200), headers)
           |> chunk(response_binary)
 
         case chunk_status do
