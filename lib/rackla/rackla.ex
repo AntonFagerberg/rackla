@@ -468,6 +468,7 @@ defmodule Rackla do
       conn
     else
       conn
+      |> set_headers(headers)
       |> send_chunked(status)
     end
   end
