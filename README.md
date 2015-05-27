@@ -2,7 +2,7 @@
 
 Rackla is an open source framework for building API gateways. When we say API gateway, we mean to proxy and potentially enhance the communication by transforming the data sent between servers and HTTP clients (such as browsers). The communication can be enhanced by throwing away unnecessary data, concatenating multiple requests into a single request or converting the data between different formats. You can also use this to change existing APIs so that they work in a different way, or you can merge any amount of existing APIs into a single new one.
 
-You can asynchronously execute multiple HTTP-requests and transform them in any way you want. The results, encapsulated in the `Rackla` struct, can be transformed with well known functions such as `map`, `flat_map` and `reduce`. By using Elixir, you can express your new API end-points as pipelines which start with requests that are piped in to a transforming function and finally piped into a response.
+You can asynchronously execute multiple HTTP-requests and transform them in any way you want. The results, encapsulated in the `Rackla` type, can be transformed with well known functions such as `map`, `flat_map` and `reduce`. By using Elixir, you can express your new API end-points as pipelines which start with requests that are piped in to a transforming function and finally piped into a response.
 
 Rackla utilizes [Plug](https://github.com/elixir-lang/plug) to expose new end-points and communicate with clients over HTTP. Internally, it uses [Hackney](https://github.com/benoitc/hackney) to make HTTP requests and [Poison](https://github.com/devinus/poison) for dealing with JSON. A big thank you to everyone involved in these projects!
 
@@ -143,7 +143,7 @@ Here's what the pipeline will do:
  * Get the query string from `conn` (Plug), in this example it will be the string: `"malmo,se|halmstad,se|copenhagen,dk|san francisco,us|stockholm,se"`.
  * Split the string on `|` to get a list instead: `["malmo,se", "halmstad,se", "copenhagen,dk", "san francisco,us", "stockholm,se"]`.
  * Map over the list and convert the cities into a list of URLs to call using the OpenWeatherMap API.
- * Request all URLs, this will return a `Rackla` struct which will contain (when ready) the response or an `:error` tuple on failure for each URL.
+ * Request all URLs, this will return a `Rackla` type which will contain (when ready) the response or an `:error` tuple on failure for each URL.
  * Map over the results using our function `temperature_extractor` (explained below).
  * Respond to the client. We use the options `json` to encode our response in JSON format and set the appropriate headers. We can also use `:compress` in order to compress the result with gzip compression (when `:compress` is `true`, it will check the headers to make sure that the client accepts gzip - you can also set it to `:force` to always respond with gzip).
  
@@ -197,7 +197,7 @@ get "/instagram" do
 end
 ```
     
-Once again, let's go through the code to see what is happening. We start by exposing the end-point `/instagram` as we normally do in Plug. Then we define the first of three pipelines. We store some HTML code in a string, convert it into a `Rackla` struct with the function `just` and use `response` to send it to the client. 
+Once again, let's go through the code to see what is happening. We start by exposing the end-point `/instagram` as we normally do in Plug. Then we define the first of three pipelines. We store some HTML code in a string, convert it into a `Rackla` type with the function `just` and use `response` to send it to the client. 
 
 After we've responded with the HTML code, we can move on to the big middle pipeline. In it, we will call the an Instagram API end-point - the actual response can be seen here: [instagram.com/developer/endpoints/users/#get_users_feed](https://instagram.com/developer/endpoints/users/#get_users_feed). We have to pass an access token to the Instagram API so we let the user supply it via the query string in the browser and add it to the Instagram URL. We call `request` with the URL and then use `flat_map`. The reason for using `flat_map` is because it gives us an easy way to create new requests based on the responses from previous requests. 
 
@@ -214,16 +214,16 @@ We will also notice, in this example, that the order is nondeterministic - meani
 ### More examples
 A collection of example end-points can be found in found [lib/rackla/rackla.ex](https://github.com/AntonFagerberg/rackla/blob/master/lib/router.ex) which illustrates additional techniques that can be used in Rackla.
 
-## The Rackla struct
-The `Rackla` struct is the type used in all of Rackla's functions. Internally, it consists of a list of Elixir processes which communicate with message passing according to a protocol defined inside Rackla (these processes can in contain even more nested `Rackla` structs). The `Rackla` struct should never be modified directly!
+## The Rackla type
+`Rackla` is also the name of the type used in all of Rackla's functions. Internally, it consists of a list of Elixir processes which communicate with message passing according to a protocol defined inside Rackla (these processes can in contain even more nested `Rackla` types). The `Rackla` type should never be modified directly!
 
-The `Rackla` struct is created with `request` which converts one or many HTTP requests to a single `Rackla` struct. You can also encapsulate normal Elixir types in a `Rackla` struct with the functions `just` or `just_list`.
+The `Rackla` type is created with `request` which converts one or many HTTP requests to a single `Rackla` type. You can also encapsulate normal Elixir types in a `Rackla` type with the functions `just` or `just_list`.
 
-Most functions, like `map`, `flat_map` and `reduce`, defined in Rackla will take a `Rackla` struct and return a new `Rackla` struct.
+Most functions, like `map`, `flat_map` and `reduce`, defined in Rackla will take a `Rackla` type and return a new `Rackla` type.
 
-The `response` function converts the `Rackla` struct to a HTTP response which is sent to the client by utilizing `Plug`. You can also convert a `Rackla` struct into "normal" Elixir types with the function `collect`.
+The `response` function converts the `Rackla` type to a HTTP response which is sent to the client by utilizing `Plug`. You can also convert a `Rackla` type into "normal" Elixir types with the function `collect`.
 
-It is important to note that once a `Rackla` struct has been used, it is no longer valid:
+It is important to note that once a `Rackla` type has been used, it is no longer valid:
 
 ```elixir
 a = Rackla.just(1)
@@ -231,7 +231,7 @@ b = a |> Rackla.map(&(&1 + 1))
 # a is now "dead" and can't be used anymore
 ```
 
-Under normal circumstances, the `Rackla` struct should be "invisible". Think of it as the box which the data is transported inside and that all the functions you use automatically opens the box, takes out the value for you and then puts it in a new box when you're done with it.
+Under normal circumstances, the `Rackla` type should be "invisible". Think of it as the box which the data is transported inside and that all the functions you use automatically opens the box, takes out the value for you and then puts it in a new box when you're done with it.
 
 (Or simply think of it as a monad if you're comfortable with that.)
 
@@ -245,7 +245,7 @@ but also individual connection timeout limits etc.  You can also call this
 function with a list of strings or `Rackla.Request` structs in order to 
 perform multiple requests concurrently.
 
-This function will return a `Rackla` struct which will contain the results 
+This function will return a `Rackla` type which will contain the results 
 from the request(s) once available or an `:error` tuple in case of failures
 such non-responding servers or DNS lookup failures.
 
@@ -261,11 +261,11 @@ If you specify any options in a `Rackla.Request` struct, these will overwrite
 the options passed to the `request` function for that specific request.
 
 ### map
-Returns a new `Rackla` struct, where each encapsulated item is the result of 
+Returns a new `Rackla` type, where each encapsulated item is the result of 
 invoking `fun` on each corresponding encapsulated item.
 
-Takes a `Rackla` struct, applies the specified function to each of the 
-elements encapsulated in it and returns a new `Rackla` struct with the 
+Takes a `Rackla` type, applies the specified function to each of the 
+elements encapsulated in it and returns a new `Rackla` type with the 
 results.
 
 Example:
@@ -275,15 +275,15 @@ Rackla.just_list([1,2,3]) |> Rackla.map(fn(x) -> x * 2 end) |> Rackla.collect
 ```
     
 ### flat_map
-Takes a `Rackla` struct, applies the specified function to each of the 
-elements encapsulated in it and returns a new `Rackla` struct with the 
-results. The given function must return a `Rackla` struct.
+Takes a `Rackla` type, applies the specified function to each of the 
+elements encapsulated in it and returns a new `Rackla` type with the 
+results. The given function must return a `Rackla` type.
 
 This function is useful when you want to create a new request pipeline based
 on the results of a previous request. In those cases, you can use 
 `Rackla.flat_map` to access the response from the request and call 
 `Rackla.request` inside the function since `Rackla.request` returns a 
-`Rackla` struct.
+`Rackla` type.
 
 Example:
 ```elixir
@@ -292,11 +292,11 @@ Rackla.just_list([1,2,3]) |> Rackla.flat_map(fn(x) -> Rackla.just(x * 2) end) |>
 ```  
 
 ### reduce
-Invokes fun for each element in the `Rackla` struct passing that element and
+Invokes fun for each element in the `Rackla` type passing that element and
 the accumulator `acc` as arguments. `fun`s return value is stored in `acc`. The 
 first element of the collection is used as the initial value of `acc` (you can 
 also use `Rackla.reduce/3` and specify your own accumulator). Returns the 
-accumulated value inside a `Rackla` struct.
+accumulated value inside a `Rackla` type.
 
 Example:
 ```elixir
@@ -305,7 +305,7 @@ Rackla.just_list([1,2,3]) |> Rackla.reduce(fn (x, acc) -> x + acc end) |> Rackla
 ```
 
 ### just
-Takes any type an encapsulates it in a `Rackla` struct.
+Takes any type an encapsulates it in a `Rackla` type.
 
 Example:
 ```elixir
@@ -315,7 +315,7 @@ Rackla.just([1,2,3]) |> Rackla.map(&IO.inspect/1)
 
 ### just_list
 Takes a list of and encapsulates each of the containing elements separately 
-in a `Rackla` struct.
+in a `Rackla` type.
 
 Example:
 ```elixir
@@ -326,8 +326,8 @@ Rackla.just_list([1,2,3]) |> Rackla.map(&IO.inspect/1)
 ```
 
 ### collect
-Returns the element encapsulated inside a `Rackla` struct, or a list of 
-elements in case the `Rackla` struct contains many elements.
+Returns the element encapsulated inside a `Rackla` type, or a list of 
+elements in case the `Rackla` type contains many elements.
 
 Example:
 ```elixir
@@ -336,8 +336,8 @@ Rackla.just_list([1,2,3]) |> Rackla.collect
 ```
 
 ### join
-Returns a new `Rackla` struct by joining the encapsulated elements from two
-`Rackla` structs.
+Returns a new `Rackla` type by joining the encapsulated elements from two
+`Rackla` types.
 
 Example:
 ```elixir
@@ -346,7 +346,7 @@ Rackla.join(Rackla.just(1), Rackla.just(2)) |> Rackla.collect
 ```
     
 ### response
-Converts a `Rackla` struct to a HTTP response and send it to the client by
+Converts a `Rackla` type to a HTTP response and send it to the client by
 using `Plug.Conn`. The `Plug.Conn` will be taken implicitly by looking for a 
 variable named `conn`. If you want to specify which `Plug.Conn` to use, you 
 can use `Rackla.response_conn`.

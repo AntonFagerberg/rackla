@@ -16,7 +16,7 @@ defmodule Rackla do
   function with a list of strings or `Rackla.Request` structs in order to 
   perform multiple requests concurrently.
   
-  This function will return a `Rackla` struct which will contain the results 
+  This function will return a `Rackla` type which will contain the results 
   from the request(s) once available or an `:error` tuple in case of failures
   such non-responding servers or DNS lookup failures.
   
@@ -99,7 +99,7 @@ defmodule Rackla do
   end
 
   @doc """
-  Takes any type an encapsulates it in a `Rackla` struct.
+  Takes any type an encapsulates it in a `Rackla` type.
   
   Example:
       Rackla.just([1,2,3]) |> Rackla.map(&IO.inspect/1)
@@ -121,7 +121,7 @@ defmodule Rackla do
 
   @doc """
   Takes a list of and encapsulates each of the containing elements separately 
-  in a `Rackla` struct.
+  in a `Rackla` type.
   
   Example:
       Rackla.just_list([1,2,3]) |> Rackla.map(&IO.inspect/1)
@@ -137,11 +137,11 @@ defmodule Rackla do
   end
 
   @doc """
-  Returns a new `Rackla` struct, where each encapsulated item is the result of 
+  Returns a new `Rackla` type, where each encapsulated item is the result of 
   invoking `fun` on each corresponding encapsulated item.
   
-  Takes a `Rackla` struct, applies the specified function to each of the 
-  elements encapsulated in it and returns a new `Rackla` struct with the 
+  Takes a `Rackla` type, applies the specified function to each of the 
+  elements encapsulated in it and returns a new `Rackla` type with the 
   results.
   
   Example:
@@ -182,15 +182,15 @@ defmodule Rackla do
   end
 
   @doc """
-  Takes a `Rackla` struct, applies the specified function to each of the 
-  elements encapsulated in it and returns a new `Rackla` struct with the 
-  results. The given function must return a `Rackla` struct.
+  Takes a `Rackla` type, applies the specified function to each of the 
+  elements encapsulated in it and returns a new `Rackla` type with the 
+  results. The given function must return a `Rackla` type.
   
   This function is useful when you want to create a new request pipeline based
   on the results of a previous request. In those cases, you can use 
   `Rackla.flat_map` to access the response from the request and call 
   `Rackla.request` inside the function since `Rackla.request` returns a 
-  `Rackla` struct.
+  `Rackla` type.
   
   Example:
       Rackla.just_list([1,2,3]) |> Rackla.flat_map(fn(x) -> Rackla.just(x * 2) end) |> Rackla.collect
@@ -229,10 +229,10 @@ defmodule Rackla do
   end
 
   @doc """
-  Invokes fun for each element in the `Rackla` struct passing that element and
+  Invokes fun for each element in the `Rackla` type passing that element and
   the accumulator `acc` as arguments. `fun`s return value is stored in `acc`. The 
   first element of the collection is used as the initial value of `acc`. Returns 
-  the accumulated value inside a `Rackla` struct.
+  the accumulated value inside a `Rackla` type.
   
   Example:
       Rackla.just_list([1,2,3]) |> Rackla.reduce(fn (x, acc) -> x + acc end) |> Rackla.collect
@@ -253,9 +253,9 @@ defmodule Rackla do
   end
 
   @doc """
-  Invokes fun for each element in the `Rackla` struct passing that element and
+  Invokes fun for each element in the `Rackla` type passing that element and
   the accumulator `acc` as arguments. fun's return value is stored in `acc`.  
-  Returns  the accumulated value inside a `Rackla` struct.
+  Returns  the accumulated value inside a `Rackla` type.
   
   Example:
       Rackla.just_list([1,2,3]) |> Rackla.reduce(10, fn (x, acc) -> x + acc end) |> Rackla.collect
@@ -313,8 +313,8 @@ defmodule Rackla do
   end
   
   @doc """
-  Returns the element encapsulated inside a `Rackla` struct, or a list of 
-  elements in case the `Rackla` struct contains many elements.
+  Returns the element encapsulated inside a `Rackla` type, or a list of 
+  elements in case the `Rackla` type contains many elements.
   
   Example:
       Rackla.just_list([1,2,3]) |> Rackla.collect
@@ -345,8 +345,8 @@ defmodule Rackla do
   end
 
   @doc """
-  Returns a new `Rackla` struct by joining the encapsulated elements from two
-  `Rackla` structs.
+  Returns a new `Rackla` type by joining the encapsulated elements from two
+  `Rackla` types.
   
   Example:
       Rackla.join(Rackla.just(1), Rackla.just(2)) |> Rackla.collect
@@ -358,7 +358,7 @@ defmodule Rackla do
   end
 
   @doc """
-  Converts a `Rackla` struct to a HTTP response and send it to the client by
+  Converts a `Rackla` type to a HTTP response and send it to the client by
   using `Plug.Conn`. The `Plug.Conn` will be taken implicitly by looking for a 
   variable named `conn`. If you want to specify which `Plug.Conn` to use, you 
   can use `Rackla.response_conn`.
