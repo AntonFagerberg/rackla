@@ -468,7 +468,6 @@ defmodule Rackla do
       conn
     else
       conn
-      |> set_headers(Dict.merge(%{"Server" => "Rackla"}, headers))
       |> send_chunked(status)
     end
   end
