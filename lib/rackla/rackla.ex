@@ -557,6 +557,10 @@ defmodule Rackla do
         if compress do
           allow_gzip = 
             Plug.Conn.get_req_header(conn, "accept-encoding")
+            |> Enum.flat_map(fn(encoding) ->
+              String.split(encoding, ",", trim: true)
+              |> Enum.map(&String.strip/1)
+            end)
             |> Enum.any?(&(Regex.match?(~r/(^(\*|gzip)(;q=(1$|1\.0{1,3}$|0\.[1-9]{1,3}$)|$))/, &1)))
           
           if allow_gzip || compress == :force do
