@@ -140,10 +140,6 @@ defmodule Rackla do
   Returns a new `Rackla` type, where each encapsulated item is the result of 
   invoking `fun` on each corresponding encapsulated item.
   
-  Takes a `Rackla` type, applies the specified function to each of the 
-  elements encapsulated in it and returns a new `Rackla` type with the 
-  results.
-  
   Example:
       Rackla.just_list([1,2,3]) |> Rackla.map(fn(x) -> x * 2 end) |> Rackla.collect
       [2, 4, 6]
@@ -188,7 +184,7 @@ defmodule Rackla do
   
   This function is useful when you want to create a new request pipeline based
   on the results of a previous request. In those cases, you can use 
-  `Rackla.flat_map` to access the response from the request and call 
+  `Rackla.flat_map` to access the response from a request and call 
   `Rackla.request` inside the function since `Rackla.request` returns a 
   `Rackla` type.
   
@@ -229,7 +225,7 @@ defmodule Rackla do
   end
 
   @doc """
-  Invokes fun for each element in the `Rackla` type passing that element and
+  Invokes `fun` for each element in the `Rackla` type passing that element and
   the accumulator `acc` as arguments. `fun`s return value is stored in `acc`. The 
   first element of the collection is used as the initial value of `acc`. Returns 
   the accumulated value inside a `Rackla` type.
@@ -253,7 +249,7 @@ defmodule Rackla do
   end
 
   @doc """
-  Invokes fun for each element in the `Rackla` type passing that element and
+  Invokes `fun` for each element in the `Rackla` type passing that element and
   the accumulator `acc` as arguments. fun's return value is stored in `acc`.  
   Returns  the accumulated value inside a `Rackla` type.
   
@@ -363,6 +359,11 @@ defmodule Rackla do
   variable named `conn`. If you want to specify which `Plug.Conn` to use, you 
   can use `Rackla.response_conn`.
   
+  Strings will be sent as is to the client. If the `Rackla` type contains any 
+  other type such as a list, it will be converted into a string by using `inspect`
+  on it. You can also convert Elixir data types to JSON format by setting the
+  option `:json` to true.
+  
   Using this macro is the same as writing:
       conn = response_conn(rackla, conn, options)
   
@@ -376,7 +377,7 @@ defmodule Rackla do
    request headers, you can set `:compress` to `:force`.
    * `:json` - If set to true, the encapsulated elements will be converted into
    a JSON encoded string before they are sent to the client. This will also set
-   the header "content-type" to the appropriate "application/json".
+   the header "content-type" to the appropriate "application/json; charset=utf-8".
   """
   defmacro response(rackla, options \\ []) do
     quote do

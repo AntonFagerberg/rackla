@@ -2,7 +2,6 @@ defmodule Router do
   @moduledoc false
 
   use Plug.Router
-  use Plug.ErrorHandler
   import Rackla
 
   plug :match
@@ -102,7 +101,7 @@ defmodule Router do
               Map.put(%{}, json_decoded["name"], json_decoded["main"]["temp"])
 
             {:error, reason} ->
-              "Failed to decode response because: #{reason}"
+              "Failed to decode response because: #{inspect(reason)}"
           end
       end
     end
@@ -117,7 +116,7 @@ defmodule Router do
 
   # Display all the images from your Instagram Feed, sent as chunks in a single
   # response. The code will first call the feed end-point, extract the URLs
-  # for all the images from that response, base64 encode them and add them to
+  # to all the images from that response, base64 encode them and add them to
   # image tags which can be rendered directly in the browser. The image response
   # order will be nondeterministic.
   # Note! Access-token from the Instagram API is required to use this end-point.

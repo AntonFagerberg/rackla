@@ -1,8 +1,10 @@
 # Rackla
 
-Rackla is an open source framework for building API gateways. When we say API gateway, we mean to proxy and potentially enhance the communication by transforming the data sent between servers and HTTP clients (such as browsers). The communication can be enhanced by throwing away unnecessary data, concatenating multiple requests into a single request or converting the data between different formats. You can also use this to change existing APIs so that they work in a different way, or you can merge any amount of existing APIs into a single new one.
+Rackla is an open source framework for building API gateways. When we say API gateway, we mean to proxy and potentially enhance the communication by transforming the data sent over HTTP between servers and  clients (such as browsers). The communication can be enhanced by throwing away unnecessary data, concatenating multiple requests into a single request or converting the data between different formats. Another possibility is to change existing APIs so that they work in a different way, or merge any amount of existing APIs into a single new one.
 
-You can asynchronously execute multiple HTTP-requests and transform them in any way you want. The results, encapsulated in the `Rackla` type, can be transformed with well known functions such as `map`, `flat_map` and `reduce`. By using Elixir, you can express your new API end-points as pipelines which start with requests that are piped in to a transforming function and finally piped into a response.
+![API Gateway](http://www.antonfagerberg.com/images/projects/api-gateway.png)
+
+With Rackla, you can asynchronously execute multiple HTTP-requests and transform them in any way you want. The results, encapsulated in the `Rackla` type, can be transformed with well known functions such as `map`, `flat_map` and `reduce`. By using the pipe operator in Elixir, you can express your new API end-points as pipelines which start with requests that are piped in to transforming functions and finally piped into a response.
 
 Rackla utilizes [Plug](https://github.com/elixir-lang/plug) to expose new end-points and communicate with clients over HTTP. Internally, it uses [Hackney](https://github.com/benoitc/hackney) to make HTTP requests and [Poison](https://github.com/devinus/poison) for dealing with JSON. A big thank you to everyone involved in these projects!
 
@@ -22,10 +24,10 @@ However, this setup can be a bit complicated, especially if you are not used to 
 
 ## Full installation (clone example project)
 
-You can clone [this GitHub repository](https://github.com/AntonFagerberg/rackla) in order to get a complete working API gateway with runnable example end-points and tests. The cloned project includes all infrastructure needed to easily expose (run) your end-points or deploy your API gateway to a cloud service such as Heroku. 
+You can clone [this GitHub repository](https://github.com/AntonFagerberg/rackla) in order to get a complete working API gateway with runnable example end-points and tests. The cloned project includes all "infrastructure" needed to easily expose (run) your end-points or deploy your API gateway to a cloud service such as Heroku. 
 
 ### Starting the application
-The application will be started automatically when running `iex -S mix`. You can also start it by running `mix server`. By default, it will start on port 4000, but you can change the port either from the file `config/config.exs` or by creating an environment variable named PORT.
+The application will be started automatically when running `iex -S mix` from the project root. You can also start it by running `mix server`. By default, it will start on port 4000, but you can change the port either from the file `config/config.exs` or by creating an environment variable named `PORT`.
 
 ### Deploy to Heroku
 The [Heroku Buildpack for Elixir](https://github.com/HashNuke/heroku-buildpack-elixir) works out of the box for Rackla when doing a full installation.
@@ -34,7 +36,7 @@ The [Heroku Buildpack for Elixir](https://github.com/HashNuke/heroku-buildpack-e
 
 ### OpenWeatherMap API (JSON)
 
-OpenWeatherMap has an API with the following end-point that we're going to use: `http://api.openweathermap.org/data/2.5/weather?q=Malmo,SE`. That end-point lets us specify one city to retrieve weather data from, defined by: `?q=Malmo,SE` (found in the end of the URL). 
+OpenWeatherMap has an API with the following end-point that we're going to use: `http://api.openweathermap.org/data/2.5/weather?q=Malmo,SE`. That end-point lets us specify one city to retrieve weather data from, defined by: `?q=Malmo,SE` (found at the end of the URL). 
 
 This will return the weather data for Malmö in Sweden:
 
@@ -122,7 +124,7 @@ get "/temperature" do
             Map.put(%{}, json_decoded["name"], json_decoded["main"]["temp"])
 
           {:error, reason} ->
-            "Failed to decode response because: #{reason}"
+            "Failed to decode response because: #{inspect(reason)}"
         end
     end
   end
@@ -136,23 +138,23 @@ get "/temperature" do
 end
 ```
 
-Let us walk through the code and explain what is happening here. First we define our endpoint `/temperature` as we would normally do in Plug. Then we define a function which we'll use in the `map` function in the pipeline, let's get back to it later and first look at the pipeline defined at the bottom of our end-point.
+Let us walk through the code and explain what is happening here. First we define our endpoint `/temperature` as we would normally do in Plug. Then we define a function which we'll use in the `Rackla.map` function in the pipeline, let's get back to it later and first look at the pipeline defined at the bottom of our end-point.
 
 Here's what the pipeline will do:
 
- * Get the query string from `conn` (Plug), in this example it will be the string: `"malmo,se|halmstad,se|copenhagen,dk|san francisco,us|stockholm,se"`.
+ * Get the query string from `conn` (implicitly provided by Plug), in this example it will be the string: `"malmo,se|halmstad,se|copenhagen,dk|san francisco,us|stockholm,se"`.
  * Split the string on `|` to get a list instead: `["malmo,se", "halmstad,se", "copenhagen,dk", "san francisco,us", "stockholm,se"]`.
- * Map over the list and convert the cities into a list of URLs to call using the OpenWeatherMap API.
+ * Map over the list and convert the city strings into a list of URLs to the OpenWeatherMap API.
  * Request all URLs, this will return a `Rackla` type which will contain (when ready) the response or an `:error` tuple on failure for each URL.
  * Map over the results using our function `temperature_extractor` (explained below).
- * Respond to the client. We use the options `json` to encode our response in JSON format and set the appropriate headers. We can also use `:compress` in order to compress the result with gzip compression (when `:compress` is `true`, it will check the headers to make sure that the client accepts gzip - you can also set it to `:force` to always respond with gzip).
+ * Respond to the client. We use the options `:json` to encode our response in JSON format and set the appropriate headers (this will take the Elixir map type returned in `temperature_extractor` and convert it to a JSON map and put all responses in a JSON list). We can also use `:compress` in order to compress the result with gzip compression (when `:compress` is `true`, Rackla will check the request headers to make sure that the client accepts gzip - you can also set it to `:force` to always respond with gzip).
  
 So let's walk through what the function `temperature_extractor` does. First of all, we pattern match to make sure that our HTTP request hasn't failed. If it has failed, we simply return a string with the reason for the failure. If our HTTP request has succeed, we try to decode it from JSON format using the library Poison. If the decoding is successful, we create a new Elixir map containing the name and the temperature for the response. This will be, for example, `%{"Malmo" => 289.751}` in one of the responses. The `response` function will later be able to encode this Elixir map into a JSON map automatically.
 
 Done! That's all we need to do to make it work!
 
 ### Instagram (Base64 encoded images)
-In this example, we will instead of providing an API, actually serve an entire HTML page that we can view in our browser. This example illustrates how we can make recursive requests and work with chunked responses.
+In this example, we will instead of providing an API, actually serve an entire HTML page that we can view in our browser. While serving a full HTML page is not really Rackla's main goal, this example illustrates how we can make recursive requests and work with chunked responses.
 
 ```elixir
 get "/instagram" do
@@ -203,19 +205,19 @@ After we've responded with the HTML code, we can move on to the big middle pipel
 
 If we get a response from the Instagram API, we decode it from JSON format to an Elixir data structure with Poison. We then extract the list stored in the key `"data"` in the Instagram response. This will give us a list of items from our Instagram feed. We then map over these items and extract the URL for the images in standard resolution which will give us a list of URLs pointing to images. We can now pipe this list in to the `request` function to fetch all these images. 
 
-Now, we map over the results - the results will now be binary image data! We can take this binary image data, Base64 encode it and place it inside a HTML image tag. By doing so, the browser can render the response chunks as images directly on our page. In the the "outer" pipeline, we end it with the `response` function which will send these HTML image tags to the client (the browser).
+Now, we map over the results - the results will now be binary image data! We can take this binary image data, Base64 encode it and place it inside a HTML image tag. By doing so, the browser can render the response chunks as images directly on our page. In the the "outer" pipeline, we end it with the `response` function which will send the HTML image tags to the client, in this case the browser. (It is important to notice that `response` is only used in the outer pipeline and not in the inner pipeline created inside `flat_map`).
 
-Finally, we create a last pipeline which will send the closing HTML tags.
+Finally, we create the last pipeline which will send the closing HTML tags.
 
-What is cool about this approach is that the image requests are executed concurrently. This means that the image HTML tags will be sent to the client as soon as they are available (as soon as we get a response from any of the image requests). We only make one request to our API gateway from the client and we only send one response to the client from our API gateway but the images will be sent in chunks so that they show up one after another in the browser just like if we requested them individually.
+What is cool about this approach is that the image requests are executed concurrently. This means that the image HTML tags will be sent to the client as soon as they are available (as soon as we get a response from any of the image requests). We only make one request to our API gateway from the client and we only send one response to the client from our API gateway but the images will be sent in chunks so they will show up one after another in the browser just like if we requested them individually.
 
 We will also notice, in this example, that the order is nondeterministic - meaning that we will (most likely) get a different order in which the images are sent every time we refresh the page. If we wanted to preserve the ordering of the images, we could either send the ordering with the chunks and let the client code render the images on the correct position - or we could set the `:sync` option to `true` in `response` which would then wait for the responses and then send them in the appropriate order.
 
 ### More examples
-A collection of example end-points can be found in found [lib/rackla/rackla.ex](https://github.com/AntonFagerberg/rackla/blob/master/lib/router.ex) which illustrates additional techniques that can be used in Rackla.
+A collection of smaller example end-points can be found in found [lib/rackla/rackla.ex](https://github.com/AntonFagerberg/rackla/blob/master/lib/router.ex) which illustrates additional techniques that can be used in Rackla.
 
 ## The Rackla type
-`Rackla` is also the name of the type used in all of Rackla's functions. Internally, it consists of a list of Elixir processes which communicate with message passing according to a protocol defined inside Rackla (these processes can in contain even more nested `Rackla` types). The `Rackla` type should never be modified directly!
+`Rackla` is also the name of the type used in all of Rackla's functions. Internally, it consists of a list of Elixir processes which communicate with message passing according to a protocol defined inside Rackla (these processes can themselves contain even more nested `Rackla` types). The `Rackla` type should never be modified directly!
 
 The `Rackla` type is created with `request` which converts one or many HTTP requests to a single `Rackla` type. You can also encapsulate normal Elixir types in a `Rackla` type with the functions `just` or `just_list`.
 
@@ -264,10 +266,6 @@ the options passed to the `request` function for that specific request.
 Returns a new `Rackla` type, where each encapsulated item is the result of 
 invoking `fun` on each corresponding encapsulated item.
 
-Takes a `Rackla` type, applies the specified function to each of the 
-elements encapsulated in it and returns a new `Rackla` type with the 
-results.
-
 Example:
 ```elixir
 Rackla.just_list([1,2,3]) |> Rackla.map(fn(x) -> x * 2 end) |> Rackla.collect
@@ -281,7 +279,7 @@ results. The given function must return a `Rackla` type.
 
 This function is useful when you want to create a new request pipeline based
 on the results of a previous request. In those cases, you can use 
-`Rackla.flat_map` to access the response from the request and call 
+`Rackla.flat_map` to access the response from a request and call 
 `Rackla.request` inside the function since `Rackla.request` returns a 
 `Rackla` type.
 
@@ -292,7 +290,7 @@ Rackla.just_list([1,2,3]) |> Rackla.flat_map(fn(x) -> Rackla.just(x * 2) end) |>
 ```  
 
 ### reduce
-Invokes fun for each element in the `Rackla` type passing that element and
+Invokes `fun` for each element in the `Rackla` type passing that element and
 the accumulator `acc` as arguments. `fun`s return value is stored in `acc`. The 
 first element of the collection is used as the initial value of `acc` (you can 
 also use `Rackla.reduce/3` and specify your own accumulator). Returns the 
@@ -351,6 +349,11 @@ using `Plug.Conn`. The `Plug.Conn` will be taken implicitly by looking for a
 variable named `conn`. If you want to specify which `Plug.Conn` to use, you 
 can use `Rackla.response_conn`.
 
+Strings will be sent as is to the client. If the `Rackla` type contains any 
+other type such as a list, it will be converted into a string by using `inspect`
+on it. You can also convert Elixir data types to JSON format by setting the
+option `:json` to true.
+
 Using this macro is the same as writing:
     `conn = response_conn(rackla, conn, options)`
 
@@ -364,7 +367,7 @@ Options:
  request headers, you can set `:compress` to `:force`.
  * `:json` - If set to true, the encapsulated elements will be converted into
  a JSON encoded string before they are sent to the client. This will also set
- the header "Content-Type" to the appropriate "application/json".
+ the header "Content-Type" to the appropriate "application/json; charset=utf-8".
 
 ## License
 Rackla source code is released under Apache 2 License. Check LICENSE file for more information.
