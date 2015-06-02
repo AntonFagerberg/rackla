@@ -456,7 +456,7 @@ defmodule Rackla do
             {:ok, thing} ->
               send_thing.(thing, remaining_producers, conn)
 
-            {error} ->
+            error ->
               send_thing.(error, remaining_producers, conn)
           end
         end
