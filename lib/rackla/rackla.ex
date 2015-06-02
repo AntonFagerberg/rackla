@@ -76,15 +76,15 @@ defmodule Rackla do
 
                     send(consumer, {self, {:ok, response}})
 
-                  {:error, atom} ->
-                    warn_request(atom)
+                  {:error, reason} ->
+                    warn_request(reason)
                 end
 
-              {:error, {atom, _partial_body}} ->
-                warn_request(atom)
+              {:error, {reason, _partial_body}} ->
+                warn_request(reason)
 
-              {:error, atom} ->
-                warn_request(atom)
+              {:error, reason} ->
+                warn_request(reason)
             end
           end)
 
