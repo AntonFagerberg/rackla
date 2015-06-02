@@ -83,8 +83,8 @@ defmodule Rackla do
               {:error, {atom, _partial_body}} ->
                 warn_request(atom)
 
-              {:error, term} ->
-                warn_request(term)
+              {:error, atom} ->
+                warn_request(atom)
             end
           end)
 
