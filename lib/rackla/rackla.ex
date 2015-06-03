@@ -5,7 +5,7 @@ defmodule Rackla do
   import Plug.Conn
   require Logger
 
-  @type t :: %__MODULE__{producers: [pid | t]}
+  @type t :: %__MODULE__{producers: [pid]}
   defstruct producers: []
 
   @doc """
