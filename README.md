@@ -15,7 +15,7 @@ You can add Rackla to your existing application by adding the following Mix depe
 ```elixir
 defp deps do
   [
-    {:rackla, "~> 0.1"} # TODO Fix correct
+    {:rackla, "~> 0.1"}
   ]
 end
 ```
