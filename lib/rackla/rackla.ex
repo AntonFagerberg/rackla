@@ -324,8 +324,8 @@ defmodule Rackla do
   """
   @spec collect(t) :: [any] | any
   def collect(%Rackla{} = rackla) do
-    [single_response | rest] = all_responses = collect_recursive(rackla)
-    if rest == [], do: single_response, else: all_responses
+    [single_response | rest] = list_responses = collect_recursive(rackla)
+    if rest == [], do: single_response, else: list_responses
   end
 
   @spec collect_recursive(t) :: [any]
