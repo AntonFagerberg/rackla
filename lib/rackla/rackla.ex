@@ -71,11 +71,10 @@ defmodule Rackla do
                       {pid, :ready} -> pid
                     end
                     
-                    request_full = Dict.get(request_options, :full)
                     global_full = Dict.get(options, :full, false)
-
+                    
                     response =
-                      if request_full || (request_full == nil && global_full) do
+                      if Dict.get(request_options, :full, global_full) do
                         %Rackla.Response{status: status, headers: headers |> Enum.into(%{}), body: body}
                       else
                         body
