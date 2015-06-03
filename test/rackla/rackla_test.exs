@@ -61,7 +61,47 @@ defmodule Rackla.Tests do
       _ -> flunk("Expected Rackla.Response, got: #{inspect(response_item)}")
     end
   end
+  
+  test "Rackla.collect - request specific :full == true" do
+    [only_body, full] =
+      [
+        "http://localhost:#{@test_router_port}/api/text/foo-bar",
+        %Rackla.Request{
+          url: "http://localhost:#{@test_router_port}/api/text/foo-bar",
+          options: [full: true]
+        }
+      ]
+      |> request
+      |> collect
 
+    assert is_binary(only_body)
+    
+    case full do
+      %Rackla.Response{} -> :ok
+      _ -> flunk("Expected Rackla.Response, got #{inspect(full)}")
+    end
+  end
+  
+  test "Rackla.collect - request specific :full == false" do
+    [only_body, full] =
+      [
+        %Rackla.Request{
+          url: "http://localhost:#{@test_router_port}/api/text/foo-bar",
+          options: [full: false]
+        },
+        "http://localhost:#{@test_router_port}/api/text/foo-bar"
+      ]
+      |> request(full: true)
+      |> collect
+
+    assert is_binary(only_body)
+    
+    case full do
+      %Rackla.Response{} -> :ok
+      _ -> flunk("Expected Rackla.Response, got #{inspect(full)}")
+    end
+  end  
+  
   test "Rackla.collect - collect single response (PUT)" do
     response_item =
       %{method: :put, url: "http://localhost:#{@test_router_port}/api/text/foo-bar"}

@@ -1,6 +1,6 @@
 defmodule Rackla.Response do
   @moduledoc """
-  `Rackla.Response` is the struct return when successfully getting an HTTP
+  `Rackla.Response` is the struct returned when successfully getting an HTTP
   response and the `request` function was called with the option `:full` set to
   `true`.
 

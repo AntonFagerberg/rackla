@@ -249,9 +249,13 @@ perform multiple requests concurrently.
 
 This function will return a `Rackla` type which will contain the results 
 from the request(s) once available or an `:error` tuple in case of failures
-such non-responding servers or DNS lookup failures.
+such non-responding servers or DNS lookup failures. Per default, on success, it 
+will only contain the response payload but the entire response can be used by 
+setting the option `:full` to true.
 
 Options:
+ * `:full` - If set to true, the `Rackla` type will contain a `Rackla.Response`
+ struct with the status code, headers and body (payload), default: false.
  * `:connect_timeout` - Connection timeout limit in milliseconds, default: 
  `5_000`.
  * `:receive_timeout` - Receive timeout limit in milliseconds, default: 
