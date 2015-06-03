@@ -484,7 +484,7 @@ defmodule Rackla do
           
         {^pid, thing} ->
           if elem(thing, 0) == :ok, do: thing = elem(thing, 1)
-          unless is_binary(thing), do: response = inspect(thing)
+          unless is_binary(thing), do: thing = inspect(thing)
           
           case chunk(conn, thing) do
             {:ok, new_conn} ->
