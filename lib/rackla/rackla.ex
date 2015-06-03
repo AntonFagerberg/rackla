@@ -504,38 +504,33 @@ defmodule Rackla do
 
     response_encoded =
       if Dict.get(options, :json, false) do
-        cond do
-          is_list(response) ->
-            Enum.map(response, fn(thing) ->
-              if is_binary(thing) do
-                case Poison.decode(thing) do
-                  {:ok, decoded} -> decoded
-                  _ -> thing
-                end
-              else
-                thing
-              end
-            end)
-            |> Poison.encode
-
-          true ->
-            if is_binary(response) do
-              case Poison.decode(response) do
-                {:error, _reason} -> Poison.encode(response)
-                {:ok, _decoded} -> {:ok, response}
+        if is_list(response) do
+          Enum.map(response, fn(thing) ->
+            if is_binary(thing) do
+              case Poison.decode(thing) do
+                {:ok, decoded} -> decoded
+                {:error, _reason} -> thing
               end
             else
-              Poison.encode(response)
+              thing
             end
+          end)
+          |> Poison.encode
+        else
+          if is_binary(response) do
+            case Poison.decode(response) do
+              {:ok, _decoded} -> {:ok, response}
+              {:error, _reason} -> Poison.encode(response)
+            end
+          else
+            Poison.encode(response)
+          end
         end
       else
         cond do
           is_list(response) ->
             binary =
-              Enum.map(response, fn(thing) ->
-                unless is_binary(thing), do: thing = inspect(thing)
-                thing
-              end)
+              Enum.map(response, &(if is_binary(&1), do: &1, else: inspect(&1)))
               |> Enum.join
 
             {:ok, binary}
@@ -551,7 +546,6 @@ defmodule Rackla do
     case response_encoded do
       {:ok, response_binary} ->
         headers = Dict.get(options, :headers, %{})
-        
         compress = Dict.get(options, :compress, false)
         
         if compress do
