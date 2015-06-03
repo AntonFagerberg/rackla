@@ -500,10 +500,10 @@ defmodule Rackla do
 
   @spec response_sync(t, Plug.Conn.t, Dict.t) :: Plug.Conn.t
   defp response_sync(%Rackla{} = rackla, conn, options) do
-    response = collect(rackla)
-
     response_encoded =
       if Dict.get(options, :json, false) do
+        response = collect(rackla)
+        
         if is_list(response) do
           Enum.map(response, fn(thing) ->
             if is_binary(thing) do
@@ -527,20 +527,11 @@ defmodule Rackla do
           end
         end
       else
-        cond do
-          is_list(response) ->
-            binary =
-              Enum.map(response, &(if is_binary(&1), do: &1, else: inspect(&1)))
-              |> Enum.join
+        binary = 
+          Enum.map(collect_recursive(rackla), &(if is_binary(&1), do: &1, else: inspect(&1)))
+          |> Enum.join
 
-            {:ok, binary}
-
-          is_binary(response) ->
-            {:ok, response}
-
-          true ->
-            {:ok, inspect(response)}
-        end
+        {:ok, binary}
       end
 
     case response_encoded do
