@@ -4,7 +4,7 @@ defmodule Rackla.Mixfile do
   def project do
     [
       app: :rackla,
-      version: "0.0.1",
+      version: "0.1",
       elixir: "~> 1.0",
       deps: deps,
       escript: escript,
@@ -35,10 +35,12 @@ defmodule Rackla.Mixfile do
   defp package do
     [
       contributors: ["Anton Fagerberg"],
-      licenses: ["MIT"],
+      licenses: ["Apache 2"],
       links: %{"GitHub" => "https://github.com/AntonFagerberg/rackla"},
       files: [
         "lib/rackla/rackla.ex",
+        "lib/rackla/request.ex",
+        "lib/rackla/response.ex",
         "mix.ex",
         "README.md",
         "LICENSE"
