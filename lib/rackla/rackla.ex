@@ -407,24 +407,18 @@ defmodule Rackla do
   end
 
   @spec response_async(t, Plug.Conn.t, Dict.t) :: Plug.Conn.t
-  defp response_async(%Rackla{} = producers, conn, options) do
+  defp response_async(%Rackla{} = rackla, conn, options) do
     conn = prepare_conn(conn, Dict.get(options, :status, 200), Dict.get(options, :headers, %{}))
 
-    prepare_chunks(producers)
+    prepare_chunks(rackla)
     |> send_chunks(conn)
   end
 
   @spec prepare_chunks(t) :: [pid]
   defp prepare_chunks(%Rackla{producers: producers}) do
-    Enum.flat_map(producers, fn(producer) ->
-      case producer do
-        %Rackla{} = nested_producers ->
-          prepare_chunks(nested_producers)
-
-        pid ->
-          send(pid, {self, :ready})
-          [pid]
-      end
+    Enum.map(producers, fn(pid) ->
+      send(pid, {self, :ready})
+      pid
     end)
   end
 
@@ -432,28 +426,27 @@ defmodule Rackla do
   defp send_chunks([], conn), do: conn
 
   defp send_chunks(producers, conn) when is_list(producers) do
-    send_thing = fn(thing, remaining_producers, conn) ->
-      unless is_binary(thing), do: thing = inspect(thing)
+    send_thing = 
+      fn(thing, remaining_producers, conn) ->
+        unless is_binary(thing), do: thing = inspect(thing)
 
-      case chunk(conn, thing) do
-        {:ok, new_conn} ->
-          send_chunks(remaining_producers, new_conn)
+        case chunk(conn, thing) do
+          {:ok, new_conn} ->
+            send_chunks(remaining_producers, new_conn)
 
-        {:error, reason} ->
-          warn_response(reason)
-          conn
+          {:error, reason} ->
+            warn_response(reason)
+            conn
+        end
       end
-    end
 
     receive do
       {message_producer, thing} ->
-        {remaining_producers, current_producer} =
-          Enum.partition(producers, fn(pid) ->
-            pid != message_producer
-          end)
+        {remaining_producers, current_producer} = 
+          Enum.partition(producers, &(&1 != message_producer))
 
         if (current_producer == []) do
-          send_chunks(producers, conn)
+          send_chunks(remaining_producers, conn)
         else
           case thing do
             {:rackla, nested_rackla} ->
