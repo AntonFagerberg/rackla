@@ -85,6 +85,24 @@ defmodule Router do
     |> response(json: true)
   end
 
+  # This end-point will return the current date in JSON format, compressed with
+  # gzip (if the client supports it). It will do this by calling the 
+  # date.jsontest API, decode the JSON response and extract the date field. 
+  # Note that this code will not handle any errors such as DNS lookup errors or
+  # JSON decoding problems - take a look at the "temperature" end-point below
+  # to see how this can be handled.
+  get "/date" do
+    extract_date = fn(json) ->
+      date = Poison.decode!(json)["date"]
+      %{date: date}
+    end
+    
+    "http://date.jsontest.com/"
+    |> request
+    |> map(extract_date)
+    |> response(json: true, compress: true)
+  end
+
   # Custom end-point which you can call with an arbitrary amount of cities
   # to get the temperatures (in Kelvin).
   # This will rewrite the JSON responses from the OpenWeatherMap API.
