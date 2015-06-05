@@ -108,8 +108,8 @@ get "/temperature" do
       {:error, reason} ->
         "HTTP request failed because: #{reason}"
       
-      ok_resonse ->
-        case Poison.decode(ok_resonse) do
+      ok_response ->
+        case Poison.decode(ok_response) do
           {:ok, json_decoded} ->
             Map.put(%{}, json_decoded["name"], json_decoded["main"]["temp"])
 
