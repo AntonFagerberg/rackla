@@ -388,6 +388,7 @@ defmodule Rackla do
   defmacro response(rackla, options \\ []) do
     quote do
       var!(conn) = response_conn(unquote(rackla), var!(conn), unquote(options))
+      _ = var!(conn) # hack to get rid of "unused variable" compiler warning
     end
   end
 
@@ -604,7 +605,7 @@ end
 defimpl Inspect, for: Rackla do
   import Inspect.Algebra
 
-  def inspect(rackla, _opts) do
+  def inspect(_rackla, _opts) do
     concat ["#Rackla<>"]
   end
 end
