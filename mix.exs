@@ -25,7 +25,7 @@ defmodule Rackla.Mixfile do
     [
       {:poison, "~> 1.4"},
       {:hackney, "~> 1.1"},
-      {:cowboy, "~> 1.0"},
+      {:cowboy, "~> 1.0", optional: true},
       {:plug, "~> 0.12"},
       {:earmark, "~> 0.1", only: :docs},
       {:ex_doc, "~> 0.7", only: :docs}
