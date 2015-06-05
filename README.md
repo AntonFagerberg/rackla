@@ -9,8 +9,28 @@ With Rackla, you can asynchronously execute multiple HTTP-requests and transform
 Rackla utilizes [Plug](https://github.com/elixir-lang/plug) to expose new end-points and communicate with clients over HTTP. Internally, it uses [Hackney](https://github.com/benoitc/hackney) to make HTTP requests and [Poison](https://github.com/devinus/poison) for dealing with JSON. A big thank you to everyone involved in these projects!
 
 ## Minimal installation (as Mix dependency)
+(This setup can be a bit complicated, especially if you are not used to working with Plug and it is therefore recommended that you do a "full installation" for your project (described below) which will get you up an running in no time!)
 
-This will be published soon!
+You can add Rackla to your existing application by adding the following Mix dependencies to `mix.exs`:
+
+```elixir
+defp deps do
+  [
+    {:rackla, "~> 0.1"},
+    {:cowboy, "~> 1.0"} # Or your web server of choice (which works with Plug)
+  ]
+end
+```
+
+You have to start Hackney, Plug, Logger and Cowboy:
+
+```elixir
+def application do
+  [applications: [:logger, :cowboy, :plug, :hackney]]
+end
+```
+
+Now you can start using Rackla! It is a good idea to check out [Plug's Github](https://github.com/elixir-lang/plug) for more information about how you can use it to define your own end-points.
 
 ## Full installation (clone example project)
 
@@ -101,6 +121,7 @@ We want our JSON response to look like this:
 ```
 
 And this is how the code in Rackla will look like (explained below):
+
 ```elixir
 get "/temperature" do
   temperature_extractor = fn(http_response) ->
@@ -244,6 +265,7 @@ will only contain the response payload but the entire response can be used by
 setting the option `:full` to true.
 
 Options:
+
  * `:full` - If set to true, the `Rackla` type will contain a `Rackla.Response`
  struct with the status code, headers and body (payload), default: false.
  * `:connect_timeout` - Connection timeout limit in milliseconds, default: 
@@ -261,6 +283,7 @@ Returns a new `Rackla` type, where each encapsulated item is the result of
 invoking `fun` on each corresponding encapsulated item.
 
 Example:
+
 ```elixir
 Rackla.just_list([1,2,3]) |> Rackla.map(fn(x) -> x * 2 end) |> Rackla.collect
 [2, 4, 6]
@@ -278,6 +301,7 @@ on the results of a previous request. In those cases, you can use
 `Rackla` type.
 
 Example:
+
 ```elixir
 Rackla.just_list([1,2,3]) |> Rackla.flat_map(fn(x) -> Rackla.just(x * 2) end) |> Rackla.collect
 [2, 4, 6]
@@ -291,6 +315,7 @@ also use `Rackla.reduce/3` and specify your own accumulator). Returns the
 accumulated value inside a `Rackla` type.
 
 Example:
+
 ```elixir
 Rackla.just_list([1,2,3]) |> Rackla.reduce(fn (x, acc) -> x + acc end) |> Rackla.collect
 6
@@ -300,6 +325,7 @@ Rackla.just_list([1,2,3]) |> Rackla.reduce(fn (x, acc) -> x + acc end) |> Rackla
 Takes any type an encapsulates it in a `Rackla` type.
 
 Example:
+
 ```elixir
 Rackla.just([1,2,3]) |> Rackla.map(&IO.inspect/1)
 [1, 2, 3]
@@ -310,6 +336,7 @@ Takes a list of and encapsulates each of the containing elements separately
 in a `Rackla` type.
 
 Example:
+
 ```elixir
 Rackla.just_list([1,2,3]) |> Rackla.map(&IO.inspect/1)
 3
@@ -322,6 +349,7 @@ Returns the element encapsulated inside a `Rackla` type, or a list of
 elements in case the `Rackla` type contains many elements.
 
 Example:
+
 ```elixir
 Rackla.just_list([1,2,3]) |> Rackla.collect
 [1,2,3]
@@ -332,6 +360,7 @@ Returns a new `Rackla` type by joining the encapsulated elements from two
 `Rackla` types.
 
 Example:
+
 ```elixir
 Rackla.join(Rackla.just(1), Rackla.just(2)) |> Rackla.collect
 [1, 2]
@@ -352,6 +381,7 @@ Using this macro is the same as writing:
     `conn = response_conn(rackla, conn, options)`
 
 Options:
+ 
  * `:compress` - Compresses the response by applying a gzip compression to it.
  When this option is used, the entire response has to be sent in one chunk. 
  You can't reuse the `conn` to send any more data after `Rackla.response` with

@@ -41,7 +41,7 @@ defmodule Rackla.Mixfile do
         "lib/rackla/rackla.ex",
         "lib/rackla/request.ex",
         "lib/rackla/response.ex",
-        "mix.ex",
+        "mix.exs",
         "README.md",
         "LICENSE"
       ]
