@@ -8,6 +8,8 @@ With Rackla, you can asynchronously execute multiple HTTP-requests and transform
 
 Rackla utilizes [Plug](https://github.com/elixir-lang/plug) to expose new end-points and communicate with clients over HTTP. Internally, it uses [Hackney](https://github.com/benoitc/hackney) to make HTTP requests and [Poison](https://github.com/devinus/poison) for dealing with JSON. A big thank you to everyone involved in these projects!
 
+[The documentation is also available online](http://hexdocs.pm/rackla/).
+
 ## Minimal installation (as Mix dependency)
 (This setup can be a bit complicated, especially if you are not used to working with Plug and it is therefore recommended that you do a "full installation" for your project (described below) which will get you up an running in no time!)
 
@@ -249,6 +251,8 @@ Under normal circumstances, the `Rackla` type should be "invisible". Think of it
 (Or simply think of it as a monad if you're comfortable with that.)
 
 ## Function overview
+
+[The documentation is also available online](http://hexdocs.pm/rackla/).
 
 ### request
 Takes a single string (URL) or a `Rackla.Request` struct and  executes a HTTP 
