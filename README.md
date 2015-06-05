@@ -10,17 +10,7 @@ Rackla utilizes [Plug](https://github.com/elixir-lang/plug) to expose new end-po
 
 ## Minimal installation (as Mix dependency)
 
-You can add Rackla to your existing application by adding the following Mix dependency:
-
-```elixir
-defp deps do
-  [
-    {:rackla, "~> 0.1"}
-  ]
-end
-```
-
-However, this setup can be a bit complicated, especially if you are not used to work with Plug and it is therefore recommended that you do a "full installation" for your project (described below) which will get you up an running in no time!
+This will be published soon!
 
 ## Full installation (clone example project)
 
