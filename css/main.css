@@ -18,7 +18,7 @@ h1 a {
 p.date {
   color: #666; }
 
-img {
+p > img {
   width: 100%; }
 
 #header {

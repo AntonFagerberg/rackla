@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <title>Function debugging</title>
-  <meta name="description" content="Rackla">
+  <meta name="description" content="RacklaRackla is an open source framework for building API gateways. When we say API gateway, we mean to proxy and potentially enhance the communication by tr...">
 
   <link rel="stylesheet" href="/css/main.css">
   <link rel="canonical" href="/2015/04/28/rackla.html">
@@ -38,9 +38,26 @@
 
 <p>Rackla utilizes <a href="https://github.com/elixir-lang/plug">Plug</a> to expose new end-points and communicate with clients over HTTP. Internally, it uses <a href="https://github.com/benoitc/hackney">Hackney</a> to make HTTP requests and <a href="https://github.com/devinus/poison">Poison</a> for dealing with JSON. A big thank you to everyone involved in these projects!</p>
 
+<p><a href="http://hexdocs.pm/rackla/">The documentation is also available online</a>.</p>
+
 <h2>Minimal installation (as Mix dependency)</h2>
 
-<p>This will be published soon!</p>
+<p>(This setup can be a bit complicated, especially if you are not used to working with Plug and it is therefore recommended that you do a &quot;full installation&quot; for your project (described below) which will get you up an running in no time!)</p>
+
+<p>You can add Rackla to your existing application by adding the following Mix dependencies to <code>mix.exs</code>:</p>
+<div class="highlight"><pre><code class="language-elixir" data-lang="elixir"><span class="kd">defp</span> <span class="n">deps</span> <span class="k">do</span>
+  <span class="p">[</span>
+    <span class="p">{</span><span class="ss">:rackla</span><span class="p">,</span> <span class="s2">&quot;~&gt; 0.1&quot;</span><span class="p">},</span>
+    <span class="p">{</span><span class="ss">:cowboy</span><span class="p">,</span> <span class="s2">&quot;~&gt; 1.0&quot;</span><span class="p">}</span> <span class="c1"># Or your web server of choice (which works with Plug)</span>
+  <span class="p">]</span>
+<span class="k">end</span>
+</code></pre></div>
+<p>You have to start Hackney, Plug, Logger and Cowboy:</p>
+<div class="highlight"><pre><code class="language-elixir" data-lang="elixir"><span class="kd">def</span> <span class="n">application</span> <span class="k">do</span>
+  <span class="p">[</span><span class="ss">applications</span><span class="p">:</span> <span class="p">[</span><span class="ss">:logger</span><span class="p">,</span> <span class="ss">:cowboy</span><span class="p">,</span> <span class="ss">:plug</span><span class="p">,</span> <span class="ss">:hackney</span><span class="p">]]</span>
+<span class="k">end</span>
+</code></pre></div>
+<p>Now you can start using Rackla! It is a good idea to check out <a href="https://github.com/elixir-lang/plug">Plug&#39;s Github</a> for more information about how you can use it to define your own end-points.</p>
 
 <h2>Full installation (clone example project)</h2>
 
@@ -133,8 +150,8 @@ separated by <code>|</code> in the query string, such as: <code>/temperature?mal
       <span class="p">{</span><span class="ss">:error</span><span class="p">,</span> <span class="n">reason</span><span class="p">}</span> <span class="p">-&gt;</span>
         <span class="s2">&quot;HTTP request failed because: </span><span class="si">#{</span><span class="n">reason</span><span class="si">}</span><span class="s2">&quot;</span>
 
-      <span class="n">ok_resonse</span> <span class="p">-&gt;</span>
-        <span class="k">case</span> <span class="nc">Poison</span><span class="p">.</span><span class="n">decode</span><span class="p">(</span><span class="n">ok_resonse</span><span class="p">)</span> <span class="k">do</span>
+      <span class="n">ok_response</span> <span class="p">-&gt;</span>
+        <span class="k">case</span> <span class="nc">Poison</span><span class="p">.</span><span class="n">decode</span><span class="p">(</span><span class="n">ok_response</span><span class="p">)</span> <span class="k">do</span>
           <span class="p">{</span><span class="ss">:ok</span><span class="p">,</span> <span class="n">json_decoded</span><span class="p">}</span> <span class="p">-&gt;</span>
             <span class="nc">Map</span><span class="p">.</span><span class="n">put</span><span class="p">(%{},</span> <span class="n">json_decoded</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span> <span class="n">json_decoded</span><span class="p">[</span><span class="s2">&quot;main&quot;</span><span class="p">][</span><span class="s2">&quot;temp&quot;</span><span class="p">])</span>
 
@@ -251,6 +268,8 @@ separated by <code>|</code> in the query string, such as: <code>/temperature?mal
 <p>(Or simply think of it as a monad if you&#39;re comfortable with that.)</p>
 
 <h2>Function overview</h2>
+
+<p><a href="http://hexdocs.pm/rackla/">The documentation is also available online</a>.</p>
 
 <h3>request</h3>
 
@@ -389,7 +408,9 @@ the header &quot;Content-Type&quot; to the appropriate &quot;application/json; c
 
 <h2>License</h2>
 
-<p>Rackla source code is released under Apache 2 License.</p>
+<p>Rackla source code is released under Apache 2 License. Check LICENSE file for more information.</p>
+
+<p><a href="https://github.com/AntonFagerberg/rackla"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://camo.githubusercontent.com/365986a132ccd6a44c23a9169022c0b5c890c387/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f7265645f6161303030302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_right_red_aa0000.png"></a></p>
 
 </div>
     
