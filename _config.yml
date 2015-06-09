@@ -3,3 +3,4 @@ markdown: redcarpet
 kramdown:
   input: GFM
 highlighter: pygments
+gems: [jekyll_github_sample]
