@@ -53,7 +53,7 @@ defmodule TestRouter do
   get "/test/proxy/set-headers" do
     conn.query_string
     |> request
-    |> response(headers: %{"Rackla" => "CrocodilePear"})
+    |> response(headers: %{"rackla" => "CrocodilePear"})
   end
 
   get "/test/json/multi" do

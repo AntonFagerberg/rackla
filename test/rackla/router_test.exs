@@ -44,7 +44,7 @@ defmodule Rackla.RouterTest do
       assert conn.scheme == :http
       assert conn.method == "GET"
       assert conn.resp_body == "foo-bar"
-      assert get_resp_header(conn, "Rackla") == ["CrocodilePear"]
+      assert get_resp_header(conn, "rackla") == ["CrocodilePear"]
   end
 
   test "Proxy - multi async" do
