@@ -16,10 +16,13 @@ defmodule Rackla.Mixfile do
   # Configuration for the OTP application
   def application do
     [
-      applications: [:logger, :cowboy, :plug, :hackney],
+      applications: applications(Mix.env),
       mod: {Rackla.Application, []}
     ]
   end
+
+  defp applications(:dev), do: applications(:all) ++ [:remix]
+  defp applications(_all), do: [:logger, :cowboy, :plug, :hackney]
 
   defp deps do
     [
@@ -28,10 +31,11 @@ defmodule Rackla.Mixfile do
       {:cowboy, "~> 1.0.0", optional: true},
       {:plug, "~> 1.0.0"},
       {:earmark, "~> 0.1.17", only: :docs},
-      {:ex_doc, "~> 0.9.0", only: :docs}
+      {:ex_doc, "~> 0.9.0", only: :docs},
+      {:remix, "~> 0.0.1", only: :dev}
     ]
   end
-  
+
   defp package do
     [
       contributors: ["Anton Fagerberg"],
@@ -47,7 +51,7 @@ defmodule Rackla.Mixfile do
       ]
     ]
   end
-  
+
   def escript do
     [main_module: Rackla.Application]
   end

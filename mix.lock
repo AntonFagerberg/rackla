@@ -13,4 +13,5 @@
   "plug": {:hex, :plug, "1.0.1"},
   "poison": {:hex, :poison, "1.5.0"},
   "ranch": {:hex, :ranch, "1.1.0"},
+  "remix": {:hex, :remix, "0.0.1"},
   "ssl_verify_hostname": {:hex, :ssl_verify_hostname, "1.0.5"}}
