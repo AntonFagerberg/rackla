@@ -32,7 +32,7 @@ defmodule Rackla.Mixfile do
       {:plug, "~> 1.0.0"},
       {:earmark, "~> 0.1.17", only: :docs},
       {:ex_doc, "~> 0.9.0", only: :docs},
-      {:remix, "~> 0.0.1", only: :dev}
+      {:remix, "~> 0.0.2", only: :dev}
     ]
   end
 
