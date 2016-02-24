@@ -39,7 +39,7 @@ defmodule Rackla.Mixfile do
 
   defp package do
     [
-      contributors: ["Anton Fagerberg"],
+      maintainers: ["Anton Fagerberg"],
       licenses: ["Apache 2"],
       links: %{"GitHub" => "https://github.com/AntonFagerberg/rackla"},
       files: [
