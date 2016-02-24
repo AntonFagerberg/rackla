@@ -33,7 +33,7 @@ defmodule Rackla.Mixfile do
       {:earmark, "~> 0.2.1", only: :docs},
       {:ex_doc, "~> 0.11.4", only: :docs},
       {:remix, "~> 0.0.2", only: :dev},
-      {:dialyxir, "~> 0.3", only: [:dev]}
+      {:dialyxir, "~> 0.3", only: :dev}
     ]
   end
 
