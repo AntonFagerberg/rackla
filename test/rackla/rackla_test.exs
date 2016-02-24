@@ -68,7 +68,7 @@ defmodule Rackla.Tests do
         "http://localhost:#{@test_router_port}/api/text/foo-bar",
         %Rackla.Request{
           url: "http://localhost:#{@test_router_port}/api/text/foo-bar",
-          options: [full: true]
+          options: %{full: true}
         }
       ]
       |> request
@@ -87,7 +87,7 @@ defmodule Rackla.Tests do
       [
         %Rackla.Request{
           url: "http://localhost:#{@test_router_port}/api/text/foo-bar",
-          options: [full: false]
+          options: %{full: false}
         },
         "http://localhost:#{@test_router_port}/api/text/foo-bar"
       ]
@@ -104,7 +104,7 @@ defmodule Rackla.Tests do
   
   test "Rackla.collect - collect single response (PUT)" do
     response_item =
-      %{method: :put, url: "http://localhost:#{@test_router_port}/api/text/foo-bar"}
+      %Rackla.Request{method: :put, url: "http://localhost:#{@test_router_port}/api/text/foo-bar"}
       |> request(full: true)
       |> collect
 
@@ -119,7 +119,7 @@ defmodule Rackla.Tests do
 
   test "Rackla.collect - collect single response (POST)" do
     response_item =
-      %{method: :post, url: "http://localhost:#{@test_router_port}/api/text/foo-bar"}
+      %Rackla.Request{method: :post, url: "http://localhost:#{@test_router_port}/api/text/foo-bar"}
       |> request(full: true)
       |> collect
 
@@ -543,7 +543,7 @@ defmodule Rackla.Tests do
     response =
       %Rackla.Request{
         url: "http://localhost:#{@test_router_port}/api/timeout",
-        options: [receive_timeout: 1_000]
+        options: %{receive_timeout: 1_000}
       }
       |> request(receive_timeout: 5_000)
       |> collect
@@ -555,7 +555,7 @@ defmodule Rackla.Tests do
     response =
       %Rackla.Request{
         url: "http://localhost:#{@test_router_port}/api/timeout",
-        options: [receive_timeout: 2_500]
+        options: %{receive_timeout: 2_500}
       }
       |> request(receive_timeout: 1)
       |> collect

@@ -4,12 +4,12 @@ defmodule Rackla.Mixfile do
   def project do
     [
       app: :rackla,
-      version: "0.1.0",
+      version: "1.0.0",
       elixir: "~> 1.0",
       deps: deps,
       escript: escript,
       package: package,
-      description: "Rackla is library used for building API-gateways."
+      description: "Rackla is library for building API-gateways."
     ]
   end
 
@@ -26,13 +26,14 @@ defmodule Rackla.Mixfile do
 
   defp deps do
     [
-      {:poison, "~> 1.5.0"},
-      {:hackney, "~> 1.3.0"},
-      {:cowboy, "~> 1.0.0", optional: true},
-      {:plug, "~> 1.0.0"},
-      {:earmark, "~> 0.1.17", only: :docs},
-      {:ex_doc, "~> 0.9.0", only: :docs},
-      {:remix, "~> 0.0.2", only: :dev}
+      {:poison, "~> 2.1.0"},
+      {:hackney, "~> 1.4.8"},
+      {:cowboy, "~> 1.0.4", optional: true},
+      {:plug, "~> 1.1.2"},
+      {:earmark, "~> 0.2.1", only: :docs},
+      {:ex_doc, "~> 0.11.4", only: :docs},
+      {:remix, "~> 0.0.2", only: :dev},
+      {:dialyxir, "~> 0.3", only: [:dev]}
     ]
   end
 

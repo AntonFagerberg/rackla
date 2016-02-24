@@ -35,7 +35,7 @@ defmodule Rackla do
   If you specify any options in a `Rackla.Request` struct, these will overwrite
   the options passed to the `request` function for that specific request.
   """
-  @spec request(String.t | Rackla.Request.t | [String.t] | [Rackla.Request.t], Dict.t) :: t
+  @spec request(String.t | Rackla.Request.t | [String.t] | [Rackla.Request.t], Keyword.t) :: t
   def request(requests, options \\ [])
 
   def request(requests, options) when is_list(requests) do
@@ -45,10 +45,10 @@ defmodule Rackla do
 
         {:ok, producer} =
           Task.start_link(fn ->
-            request_options = Map.get(request, :options, [])
-            global_insecure = Dict.get(options, :insecure, false)
-            global_connect_timeout = Dict.get(options, :connect_timeout, 5_000)
-            global_receive_timeout = Dict.get(options, :receive_timeout, 5_000)
+            request_options = Map.get(request, :options, %{})
+            global_insecure = Keyword.get(options, :insecure, false)
+            global_connect_timeout = Keyword.get(options, :connect_timeout, 5_000)
+            global_receive_timeout = Keyword.get(options, :receive_timeout, 5_000)
 
             hackney_request =
               :hackney.request(
@@ -57,9 +57,9 @@ defmodule Rackla do
                 Map.get(request, :headers, %{}) |> Enum.into([]),
                 Map.get(request, :body, ""),
                 [
-                  insecure: Dict.get(request_options, :insecure, global_insecure),
-                  connect_timeout: Dict.get(request_options, :connect_timeout, global_connect_timeout),
-                  recv_timeout: Dict.get(request_options, :receive_timeout, global_receive_timeout)
+                  insecure: Map.get(request_options, :insecure, global_insecure),
+                  connect_timeout: Map.get(request_options, :connect_timeout, global_connect_timeout),
+                  recv_timeout: Map.get(request_options, :receive_timeout, global_receive_timeout)
                 ]
               )
 
@@ -71,10 +71,10 @@ defmodule Rackla do
                       {pid, :ready} -> pid
                     end
                     
-                    global_full = Dict.get(options, :full, false)
+                    global_full = Keyword.get(options, :full, false)
                     
                     response =
-                      if Dict.get(request_options, :full, global_full) do
+                      if Map.get(request_options, :full, global_full) do
                         %Rackla.Response{status: status, headers: headers |> Enum.into(%{}), body: body}
                       else
                         body
@@ -395,21 +395,21 @@ defmodule Rackla do
   @doc """
   See documentation for `Rackla.response`.
   """
-  @spec response_conn(t, Plug.Conn.t, Dict.t) :: Plug.Conn.t
+  @spec response_conn(t, Plug.Conn.t, Keyword.t) :: Plug.Conn.t
   def response_conn(%Rackla{} = rackla, conn, options \\ []) do
     cond do
-      Dict.get(options, :compress, false) || Dict.get(options, :json, false) ->
+      Keyword.get(options, :compress, false) || Keyword.get(options, :json, false) ->
         response_sync(rackla, conn, options)
-      Dict.get(options, :sync, false) ->
+      Keyword.get(options, :sync, false) ->
         response_sync_chunk(rackla, conn, options)
       true ->
         response_async(rackla, conn, options)
     end
   end
 
-  @spec response_async(t, Plug.Conn.t, Dict.t) :: Plug.Conn.t
+  @spec response_async(t, Plug.Conn.t, Keyword.t) :: Plug.Conn.t
   defp response_async(%Rackla{} = rackla, conn, options) do
-    conn = prepare_conn(conn, Dict.get(options, :status, 200), Dict.get(options, :headers, %{}))
+    conn = prepare_conn(conn, Keyword.get(options, :status, 200), Keyword.get(options, :headers, %{}))
 
     prepare_chunks(rackla)
     |> send_chunks(conn)
@@ -463,7 +463,7 @@ defmodule Rackla do
     end
   end
   
-  @spec prepare_conn(Plug.Conn.t, Integer, Dict.t) :: Plug.Conn.t
+  @spec prepare_conn(Plug.Conn.t, integer, %{}) :: Plug.Conn.t
   defp prepare_conn(conn, status, headers) do
     if (conn.state == :chunked) do
       conn
@@ -474,9 +474,9 @@ defmodule Rackla do
     end
   end
   
-  @spec response_sync_chunk(t, Plug.Conn.t, Dict.t) :: Plug.Conn.t
+  @spec response_sync_chunk(t, Plug.Conn.t, Keyword.t) :: Plug.Conn.t
   defp response_sync_chunk(%Rackla{} = rackla, conn, options) do
-    conn = prepare_conn(conn, Dict.get(options, :status, 200), Dict.get(options, :headers, %{}))
+    conn = prepare_conn(conn, Keyword.get(options, :status, 200), Keyword.get(options, :headers, %{}))
     
     Enum.reduce(prepare_chunks(rackla), conn, fn(pid, conn) ->
       receive do
@@ -499,10 +499,10 @@ defmodule Rackla do
     end)
   end
 
-  @spec response_sync(t, Plug.Conn.t, Dict.t) :: Plug.Conn.t
+  @spec response_sync(t, Plug.Conn.t, Keyword.t) :: Plug.Conn.t
   defp response_sync(%Rackla{} = rackla, conn, options) do
     response_encoded =
-      if Dict.get(options, :json, false) do
+      if Keyword.get(options, :json, false) do
         response = collect(rackla)
         
         if is_list(response) do
@@ -537,8 +537,8 @@ defmodule Rackla do
 
     case response_encoded do
       {:ok, response_binary} ->
-        headers = Dict.get(options, :headers, %{})
-        compress = Dict.get(options, :compress, false)
+        headers = Keyword.get(options, :headers, %{})
+        compress = Keyword.get(options, :compress, false)
         
         if compress do
           allow_gzip = 
@@ -551,16 +551,16 @@ defmodule Rackla do
           
           if allow_gzip || compress == :force do
             response_binary = :zlib.gzip(response_binary)
-            headers = Dict.merge(headers, %{"content-encoding" => "gzip"})
+            headers = Map.merge(headers, %{"content-encoding" => "gzip"})
           end
         end
 
-        if Dict.get(options, :json, false) do
+        if Keyword.get(options, :json, false) do
           conn = put_resp_content_type(conn, "application/json")
         end
 
         chunk_status =
-          prepare_conn(conn, Dict.get(options, :status, 200), headers)
+          prepare_conn(conn, Keyword.get(options, :status, 200), headers)
           |> chunk(response_binary)
 
         case chunk_status do
@@ -573,12 +573,18 @@ defmodule Rackla do
         end
 
       {:error, reason} ->
-        Logger.error("Response decoding error: #{inspect(reason)}")
+        case Logger.error("Response decoding error: #{inspect(reason)}") do 
+          {:error, logger_reason} -> 
+            IO.puts(:std_err, "Unable to log \"Response decoding error: #{inspect(reason)}\", reason: #{inspect(logger_reason)}")
+            
+          :ok -> :ok
+        end
+        
         conn
     end
   end
 
-  @spec set_headers(Plug.Conn.t, Dict.t) :: Plug.Conn.t
+  @spec set_headers(Plug.Conn.t, %{}) :: Plug.Conn.t
   defp set_headers(conn, headers) do
     Enum.reduce(headers, conn, fn({key, value}, conn) ->
       put_resp_header(conn, key, value)
@@ -586,11 +592,25 @@ defmodule Rackla do
   end
 
   @spec warn_response(any) :: :ok
-  defp warn_response(reason), do: Logger.error("HTTP response error: #{inspect(reason)}")
+  defp warn_response(reason) do
+    case Logger.error("HTTP response error: #{inspect(reason)}") do
+      {:error, logger_reason} -> 
+        IO.puts(:std_err, "Unable to log \"HTTP response error: #{inspect(reason)}\", reason: #{inspect(logger_reason)}")
+
+      :ok -> :ok
+    end
+    
+    :ok
+  end
 
   @spec warn_request(any) :: :ok
   defp warn_request(reason) do
-    Logger.warn("HTTP request error: #{inspect(reason)}")
+    case Logger.warn("HTTP request error: #{inspect(reason)}") do
+      {:error, logger_reason} ->
+        IO.puts(:std_err, "Unable to log \"HTTP request error: #{inspect(reason)}\", reason: #{inspect(logger_reason)}")
+        
+      :ok -> :ok
+    end
 
     consumer = receive do
       {pid, :ready} -> pid
