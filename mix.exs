@@ -30,8 +30,8 @@ defmodule Rackla.Mixfile do
       {:hackney, "~> 1.4.8"},
       {:cowboy, "~> 1.0.4", optional: true},
       {:plug, "~> 1.1.2"},
-      {:earmark, "~> 0.2.1", only: :docs},
-      {:ex_doc, "~> 0.11.4", only: :docs},
+      {:earmark, "~> 0.2.1", only: :dev},
+      {:ex_doc, "~> 0.11.4", only: :dev},
       {:remix, "~> 0.0.2", only: :dev},
       {:dialyxir, "~> 0.3", only: :dev}
     ]
@@ -48,7 +48,8 @@ defmodule Rackla.Mixfile do
         "lib/rackla/response.ex",
         "mix.exs",
         "README.md",
-        "LICENSE"
+        "LICENSE",
+        "CHANGELOG.md"
       ]
     ]
   end
