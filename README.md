@@ -18,7 +18,7 @@ You can add Rackla to your existing application by adding the following Mix depe
 ```elixir
 defp deps do
   [
-    {:rackla, "~> 0.1"},
+    {:rackla, "~> 1.0"},
     {:cowboy, "~> 1.0"} # Or your web server of choice (which works with Plug)
   ]
 end
