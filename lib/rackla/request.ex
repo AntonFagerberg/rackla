@@ -22,6 +22,8 @@ defmodule Rackla.Request do
   `5_000`.
   * `:insecure` - If true, SSL certificates will not be checked, global default: 
   `false`.
+  * `:follow_redirect` - If set to true, Rackla will follow redirects, 
+  default: `false`.
   """
 
   @type t :: %__MODULE__{
