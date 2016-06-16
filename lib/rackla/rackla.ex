@@ -31,6 +31,8 @@ defmodule Rackla do
    `5_000`.
    * `:insecure` - If set to true, SSL certificates will not be checked, 
    default: `false`.
+   * `:follow_redirect` - If set to true, Rackla will follow redirects, 
+   default: `false`.
    
   If you specify any options in a `Rackla.Request` struct, these will overwrite
   the options passed to the `request` function for that specific request.
@@ -49,6 +51,7 @@ defmodule Rackla do
             global_insecure = Keyword.get(options, :insecure, false)
             global_connect_timeout = Keyword.get(options, :connect_timeout, 5_000)
             global_receive_timeout = Keyword.get(options, :receive_timeout, 5_000)
+            global_follow_redirect = Keyword.get(options, :follow_redirect, false)
 
             hackney_request =
               :hackney.request(
@@ -59,7 +62,8 @@ defmodule Rackla do
                 [
                   insecure: Map.get(request_options, :insecure, global_insecure),
                   connect_timeout: Map.get(request_options, :connect_timeout, global_connect_timeout),
-                  recv_timeout: Map.get(request_options, :receive_timeout, global_receive_timeout)
+                  recv_timeout: Map.get(request_options, :receive_timeout, global_receive_timeout),
+                  follow_redirect: Map.get(request_options, :follow_redirect, global_follow_redirect)
                 ]
               )
 
