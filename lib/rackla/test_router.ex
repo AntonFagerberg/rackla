@@ -63,6 +63,28 @@ defmodule TestRouter do
     |> join(just([1.0, 2.0, 3.0]))
     |> response(json: true)
   end
+  
+  get "/test/redirect/:retires" do
+    {retries, _} = Integer.parse(retires)
+
+    if retries == 0 do
+      send_resp(conn, 200, "redirect done!")
+    else
+      just("redirect body")
+      |> response(status: 301, headers: %{"location" => "/test/redirect/#{retries - 1}"})
+    end
+  end
+  
+  post "/test/post-redirect/:retires" do
+    {retries, _} = Integer.parse(retires)
+    
+    if retries == 0 do
+      send_resp(conn, 200, "post redirect done!")
+    else
+      just("post redirect body")
+      |> response(status: 301, headers: %{"location" => "/test/post-redirect/#{retries - 1}"})
+    end
+  end
 
   get "/api/json/foo-bar" do
     json = Poison.encode!(%{foo: "bar"})

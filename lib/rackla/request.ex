@@ -24,6 +24,9 @@ defmodule Rackla.Request do
   `false`.
   * `:follow_redirect` - If set to true, Rackla will follow redirects, 
   default: `false`.
+  * `:max_redirect` - Maximum number of redirects, default: `5`.
+  * `:force_redirect` - Force follow redirect (e.g. POST), default: `false`.
+  * `:proxy` - Proxy to use, see `Rackla.Proxy`, default: `nil`.
   """
 
   @type t :: %__MODULE__{

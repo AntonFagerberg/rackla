@@ -461,21 +461,6 @@ defmodule Rackla.Tests do
     end)
   end
 
-  test "Rackla.map - arithmetic error" do
-    capture_io(:user, fn ->
-      Process.flag(:trap_exit, true)
-
-      Task.start_link(fn ->
-        just("test")
-        |> map(fn(_) -> 1/0 end)
-        |> collect
-      end)
-
-      assert_receive {:EXIT, _pid, {:badarith, _rest}}, 1_000
-      Logger.flush()
-    end)
-  end
-
   test "Rackla.flat_map - wrong return type" do
     capture_io(:user, fn ->
       Process.flag(:trap_exit, true)
@@ -502,21 +487,6 @@ defmodule Rackla.Tests do
       end)
 
       assert_receive {:EXIT, _pid, {%RuntimeError{message: "oops"}, _rest}}, 5_000
-      Logger.flush()
-    end)
-  end
-
-  test "Rackla.flat_map - arithmetic error" do
-    capture_io(:user, fn ->
-      Process.flag(:trap_exit, true)
-
-      Task.start_link(fn ->
-        just("test")
-        |> flat_map(fn(_) -> 1/0 end)
-        |> collect
-      end)
-
-      assert_receive {:EXIT, _pid, {:badarith, _rest}}, 1_000
       Logger.flush()
     end)
   end
@@ -561,5 +531,119 @@ defmodule Rackla.Tests do
       |> collect
 
     assert response == "ok"
+  end
+  
+  test "Follow redirect - do not follow by default" do
+    response = 
+      %Rackla.Request{
+        url: "http://localhost:#{@test_router_port}/test/redirect/1",
+      }
+      |> request
+      |> collect
+      
+    assert response == "redirect body"
+  end
+  
+  test "Follow redirect - follow redirect can be enabled in global setting" do
+    response = 
+      %Rackla.Request{
+        url: "http://localhost:#{@test_router_port}/test/redirect/1",
+      }
+      |> request(follow_redirect: true)
+      |> collect
+      
+    assert response == "redirect done!"
+  end
+  
+  test "Follow redirect - follow redirect can be enabled in request setting" do
+    response = 
+      %Rackla.Request{
+        url: "http://localhost:#{@test_router_port}/test/redirect/1",
+        options: %{follow_redirect: true}
+      }
+      |> request
+      |> collect
+      
+    assert response == "redirect done!"
+  end
+  
+  test "Max redirect - default should be 5" do
+    response = 
+      %Rackla.Request{
+        url: "http://localhost:#{@test_router_port}/test/redirect/5",
+      }
+      |> request(follow_redirect: true)
+      |> collect
+      
+    assert response == "redirect done!"
+    
+    response = 
+      %Rackla.Request{
+        url: "http://localhost:#{@test_router_port}/test/redirect/6",
+      }
+      |> request(follow_redirect: true)
+      |> collect
+      
+    assert response == {:error, :max_redirect_overflow}
+  end
+  
+  test "Max redirect - change number of redirects in global setting" do
+    response = 
+      %Rackla.Request{
+        url: "http://localhost:#{@test_router_port}/test/redirect/10",
+      }
+      |> request(follow_redirect: true, max_redirect: 10)
+      |> collect
+      
+    assert response == "redirect done!"
+  end
+  
+  test "Max redirect - change number of redirects in request setting" do
+    response = 
+      %Rackla.Request{
+        url: "http://localhost:#{@test_router_port}/test/redirect/10",
+        options: %{follow_redirect: true, max_redirect: 10}
+      }
+      |> request
+      |> collect
+      
+    assert response == "redirect done!"
+  end
+  
+  test "POST redirect - POST are not following redirect by default" do
+    response = 
+      %Rackla.Request{
+        method: :post,
+        url: "http://localhost:#{@test_router_port}/test/post-redirect/5",
+      }
+      |> request(follow_redirect: true)
+      |> collect
+      
+    assert response == {:error, :force_redirect_disabled}
+  end
+  
+  test "POST redirect - POST can be forced to follow redirects in global setting" do
+    response = 
+      %Rackla.Request{
+        method: :post,
+        url: "http://localhost:#{@test_router_port}/test/post-redirect/5",
+      }
+      |> request(follow_redirect: true, force_redirect: true)
+      |> collect
+      
+    assert response == "post redirect done!"
+  end
+  
+  test "POST redirect - POST can be forced to follow redirects in request setting" do
+    response = 
+      %Rackla.Request{
+        method: :post,
+        url: "http://localhost:#{@test_router_port}/test/post-redirect/5",
+        options: %{follow_redirect: true, force_redirect: true}
+      }
+      |> request
+      |> collect
+      
+    assert response == "post redirect done!"
   end
 end

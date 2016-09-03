@@ -33,6 +33,9 @@ defmodule Rackla do
    default: `false`.
    * `:follow_redirect` - If set to true, Rackla will follow redirects, 
    default: `false`.
+   * `:max_redirect` - Maximum number of redirects, default: `5`.
+   * `:force_redirect` - Force follow redirect (e.g. POST), default: `false`.
+   * `:proxy` - Proxy to use, see `Rackla.Proxy`, default: `nil`.
    
   If you specify any options in a `Rackla.Request` struct, these will overwrite
   the options passed to the `request` function for that specific request.
@@ -57,6 +60,32 @@ defmodule Rackla do
             global_connect_timeout = Keyword.get(options, :connect_timeout, 5_000)
             global_receive_timeout = Keyword.get(options, :receive_timeout, 5_000)
             global_follow_redirect = Keyword.get(options, :follow_redirect, false)
+            global_max_redirect = Keyword.get(options, :max_redirect, 5)
+            global_force_redirect = Keyword.get(options, :force_redirect, false)
+            
+            global_proxy = Keyword.get(options, :proxy)
+            request_proxy = Map.get(request_options, :proxy)
+            
+            rackla_proxy = 
+              cond do
+                request_proxy != nil -> request_proxy
+                global_proxy != nil -> global_proxy
+                true -> nil
+              end
+            
+            proxy_options =
+              case rackla_proxy do
+                %Rackla.Proxy{type: type, host: host, port: port, username: username, password: password, pool: pool} ->
+                  proxy_basic_setting = [proxy: {type, String.to_atom(host), port}]
+                  
+                  username_setting = if username != nil, do: [socks5_user: String.to_atom(username)], else: []
+                  password_setting = if password != nil, do: [socks5_pass: String.to_atom(password)], else: []
+                  pool_setting = if pool != nil, do: [pool: pool], else: []
+                  
+                  proxy_basic_setting ++ username_setting ++ password_setting ++ pool_setting
+                
+                nil -> []
+              end
 
             hackney_request =
               :hackney.request(
@@ -68,11 +97,16 @@ defmodule Rackla do
                   insecure: Map.get(request_options, :insecure, global_insecure),
                   connect_timeout: Map.get(request_options, :connect_timeout, global_connect_timeout),
                   recv_timeout: Map.get(request_options, :receive_timeout, global_receive_timeout),
-                  follow_redirect: Map.get(request_options, :follow_redirect, global_follow_redirect)
-                ]
+                  follow_redirect: Map.get(request_options, :follow_redirect, global_follow_redirect),
+                  max_redirect: Map.get(request_options, :max_redirect, global_max_redirect),
+                  force_redirect: Map.get(request_options, :force_redirect, global_force_redirect)
+                ] ++ proxy_options
               )
 
             case hackney_request do
+              {:ok, {:maybe_redirect, _, _, _}} -> 
+                warn_request(:force_redirect_disabled)
+              
               {:ok, status, headers, body_ref} ->
                 case :hackney.body(body_ref) do
                   {:ok, body} ->
