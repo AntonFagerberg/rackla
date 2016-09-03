@@ -8,11 +8,10 @@ defmodule Rackla.Proxy do
   * `port` - Port, example: `8080`, default: `8080`.
 
   Optional:
-  * `socks5_username` - Username for SOCKS5, default: `nil`.
-  * `socks5_password` - Password for SOCKS5, default: `nil`.
+  * `username` - Username for proxy, default: `nil`.
+  * `password` - Password for proxy, default: `nil`.
   * `pool` - Define one pool per proxy if you wish to use several proxies 
     simultaneously, default: `nil`.
-  
   """
 
   @type t :: %__MODULE__{

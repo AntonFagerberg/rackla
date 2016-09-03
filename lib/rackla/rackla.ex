@@ -78,11 +78,24 @@ defmodule Rackla do
                 %Rackla.Proxy{type: type, host: host, port: port, username: username, password: password, pool: pool} ->
                   proxy_basic_setting = [proxy: {type, String.to_atom(host), port}]
                   
-                  username_setting = if username != nil, do: [socks5_user: String.to_atom(username)], else: []
-                  password_setting = if password != nil, do: [socks5_pass: String.to_atom(password)], else: []
+                  auth_settings =
+                    case type do
+                      :socks5 ->
+                        socks5_user = if username != nil, do: [socks5_user: String.to_atom(username)], else: []
+                        socks5_pass = if password != nil, do: [socks5_pass: String.to_atom(password)], else: []  
+                        
+                        socks5_user ++ socks5_pass
+                      :connect -> 
+                        if username != nil and password != nil do
+                          [proxy_auth: {String.to_atom(username), String.to_atom(password)}]
+                        else
+                         []
+                       end
+                    end
+                  
                   pool_setting = if pool != nil, do: [pool: pool], else: []
                   
-                  proxy_basic_setting ++ username_setting ++ password_setting ++ pool_setting
+                  proxy_basic_setting ++ auth_settings ++ pool_setting
                 
                 nil -> []
               end
