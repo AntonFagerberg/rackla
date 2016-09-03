@@ -461,21 +461,6 @@ defmodule Rackla.Tests do
     end)
   end
 
-  test "Rackla.map - arithmetic error" do
-    capture_io(:user, fn ->
-      Process.flag(:trap_exit, true)
-
-      Task.start_link(fn ->
-        just("test")
-        |> map(fn(_) -> 1/0 end)
-        |> collect
-      end)
-
-      assert_receive {:EXIT, _pid, {:badarith, _rest}}, 1_000
-      Logger.flush()
-    end)
-  end
-
   test "Rackla.flat_map - wrong return type" do
     capture_io(:user, fn ->
       Process.flag(:trap_exit, true)
@@ -502,21 +487,6 @@ defmodule Rackla.Tests do
       end)
 
       assert_receive {:EXIT, _pid, {%RuntimeError{message: "oops"}, _rest}}, 5_000
-      Logger.flush()
-    end)
-  end
-
-  test "Rackla.flat_map - arithmetic error" do
-    capture_io(:user, fn ->
-      Process.flag(:trap_exit, true)
-
-      Task.start_link(fn ->
-        just("test")
-        |> flat_map(fn(_) -> 1/0 end)
-        |> collect
-      end)
-
-      assert_receive {:EXIT, _pid, {:badarith, _rest}}, 1_000
       Logger.flush()
     end)
   end
