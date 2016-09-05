@@ -1,5 +1,5 @@
 defmodule Rackla do
-  @moduledoc Regex.replace(~r/```(elixir|json)(\n|.*)```/rs, File.read!("README.md"), 
+  @moduledoc Regex.replace(~r/```(elixir|json)(\n|.*)```/Us, File.read!("README.md"), 
   fn(_, _, code) -> Regex.replace(~r/^/m, code, "    ") end)
   
   import Plug.Conn
@@ -43,7 +43,7 @@ defmodule Rackla do
   def request(requests, options) when is_list(requests) do
     producers =
       Enum.map(requests, fn(request) ->
-        if is_binary(request), do: request = %Rackla.Request{url: request}
+        request = if is_binary(request), do: %Rackla.Request{url: request}, else: request
 
         {:ok, producer} =
           Task.start_link(fn ->
@@ -433,7 +433,7 @@ defmodule Rackla do
   defp send_chunks(producers, conn) when is_list(producers) do
     send_thing = 
       fn(thing, remaining_producers, conn) ->
-        unless is_binary(thing), do: thing = inspect(thing)
+        thing = if is_binary(thing), do: thing, else: inspect(thing)
 
         case chunk(conn, thing) do
           {:ok, new_conn} ->
@@ -488,8 +488,13 @@ defmodule Rackla do
           response_sync_chunk(nested_rackla, conn, options)
           
         {^pid, thing} ->
-          if elem(thing, 0) == :ok, do: thing = elem(thing, 1)
-          unless is_binary(thing), do: thing = inspect(thing)
+          thing = 
+            case thing do
+              {:ok, thing} -> thing
+              thing -> thing
+            end
+
+        thing = if is_binary(thing), do: thing, else: inspect(thing)
           
           case chunk(conn, thing) do
             {:ok, new_conn} ->
@@ -544,24 +549,31 @@ defmodule Rackla do
         headers = Keyword.get(options, :headers, %{})
         compress = Keyword.get(options, :compress, false)
         
-        if compress do
-          allow_gzip = 
-            Plug.Conn.get_req_header(conn, "accept-encoding")
-            |> Enum.flat_map(fn(encoding) ->
-              String.split(encoding, ",", trim: true)
-              |> Enum.map(&String.strip/1)
-            end)
-            |> Enum.any?(&(Regex.match?(~r/(^(\*|gzip)(;q=(1$|1\.0{1,3}$|0\.[1-9]{1,3}$)|$))/, &1)))
-          
-          if allow_gzip || compress == :force do
-            response_binary = :zlib.gzip(response_binary)
-            headers = Map.merge(headers, %{"content-encoding" => "gzip"})
-          end
-        end
+        {response_binary, headers} =
+          if compress do
+            allow_gzip = 
+              Plug.Conn.get_req_header(conn, "accept-encoding")
+              |> Enum.flat_map(fn(encoding) ->
+                String.split(encoding, ",", trim: true)
+                |> Enum.map(&String.strip/1)
+              end)
+              |> Enum.any?(&(Regex.match?(~r/(^(\*|gzip)(;q=(1$|1\.0{1,3}$|0\.[1-9]{1,3}$)|$))/, &1)))
 
-        if Keyword.get(options, :json, false) do
-          conn = put_resp_content_type(conn, "application/json")
-        end
+            if allow_gzip || compress == :force do
+              {:zlib.gzip(response_binary), Map.merge(headers, %{"content-encoding" => "gzip"})}
+            else
+              {response_binary, headers}
+            end
+          else
+            {response_binary, headers}
+          end
+
+        conn =
+          if Keyword.get(options, :json, false) do
+            put_resp_content_type(conn, "application/json")
+          else
+            conn
+          end
 
         chunk_status =
           prepare_conn(conn, Keyword.get(options, :status, 200), headers)
