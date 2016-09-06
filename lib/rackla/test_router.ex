@@ -85,6 +85,15 @@ defmodule TestRouter do
       |> response(status: 301, headers: %{"location" => "/test/post-redirect/#{retries - 1}"})
     end
   end
+  
+  post "/test/incoming_request" do
+    {:ok, rackla_request} = incoming_request(%{connect_timeout: 1337})
+    
+    rackla_request
+    |> Poison.encode!
+    |> just
+    |> response
+  end
 
   get "/api/json/foo-bar" do
     json = Poison.encode!(%{foo: "bar"})

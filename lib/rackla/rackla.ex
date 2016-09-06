@@ -462,6 +462,83 @@ defmodule Rackla do
         response_async(rackla, conn, options)
     end
   end
+  
+  @doc """
+  Convert an incoming request (from `Plug`) to a `Rackla.Request`.
+  If `options` is specified, it will be added to the `Rackla.Request`.
+  For valid options, see documentation for `Rackla.Request`.
+  
+  Returns either `{:ok, Rackla.Request}` or `{:error, reason}` as per 
+  `:gen_tcp.recv/2`.
+  
+  The `Plug.Conn` will be taken implicitly by looking for a variable named 
+  `conn`. If you want to specify which `Plug.Conn` to use, you can use 
+  `Rackla.incoming_request_conn`.
+  
+  Using this macro is the same as writing:
+    conn = incoming_request_conn(conn, options)
+  
+  From `Plug.Conn` documentation:
+  Because the request body can be of any size, reading the body will only work 
+  once, as Plug will not cache the result of these operations. If you need to 
+  access the body multiple times, it is your responsibility to store it. Finally 
+  keep in mind some plugs like Plug.Parsers may read the body, so the body may 
+  be unavailable after being accessed by such plugs.
+  """
+  @spec incoming_request(%{}) :: {:ok, Rackla.Request.t} | {:error, term}
+  defmacro incoming_request(options \\ %{}) do
+    quote do
+      {var!(conn), rackla_request} = incoming_request_conn(var!(conn), unquote(options))
+      _ = var!(conn) # hack to get rid of "unused variable" compiler warning
+      rackla_request
+    end
+  end
+    
+  @doc """
+  See documentation for `Rackla.incoming_request`.
+  """
+  @spec incoming_request_conn(Plug.Conn.t, %{}) :: {Plug.Conn.t, {:ok, Rackla.Request.t}} | {Plug.Conn.t, {:error, term}}
+  def incoming_request_conn(conn, options \\ %{}) do
+    response_body = 
+      Stream.unfold(Plug.Conn.read_body(conn), fn 
+        :done -> 
+          nil;
+        
+        {:ok, body, new_conn} -> 
+          {{new_conn, body}, :done};
+        
+        {:more, partial_body, new_conn} -> 
+          {partial_body, Plug.Conn.read_body(new_conn)};
+        
+        {:error, term} -> 
+          {{:error, term}, :done}
+      end)
+      |> Enum.reduce({"", conn}, fn 
+        ({:error, term}, {_body_acc, conn_acc}) -> {{:error, term}, conn_acc};
+        ({new_conn, body}, {body_acc, _conn_acc}) -> {{:ok, body_acc <> body}, new_conn};
+        (partial_body, {body_acc, conn_acc}) -> {body_acc <> partial_body, conn_acc}
+      end)
+      
+    case response_body do
+      {{:error, term}, final_conn} -> {final_conn, {:error, term}}
+      
+      {{:ok, body}, final_conn} ->
+        method = conn.method |> String.downcase |> String.to_atom
+        url = "#{Atom.to_string(conn.scheme)}://#{conn.host}#{conn.request_path}"
+        headers = Enum.into(conn.req_headers, %{})
+        
+        rackla_request =
+          %Rackla.Request{
+            method: method,
+            url: url,
+            headers: headers,
+            body: body,
+            options: options
+          }
+          
+        {final_conn, {:ok, rackla_request}}
+    end
+  end
 
   @spec response_async(t, Plug.Conn.t, Keyword.t) :: Plug.Conn.t
   defp response_async(%Rackla{} = rackla, conn, options) do

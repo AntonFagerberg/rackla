@@ -646,4 +646,25 @@ defmodule Rackla.Tests do
       
     assert response == "post redirect done!"
   end
+  
+  test "Convert incoming request to Rackla.Request" do
+    body = "this is a test body"
+    
+    response =
+      %Rackla.Request{
+        method: :post,
+        url: "http://localhost:#{@test_router_port}/test/incoming_request",
+        headers: %{"test-header" => "test-value"},
+        body: body
+      }
+      |> request
+      |> collect
+      |> Poison.decode!
+      
+    assert Map.get(response, "body") == body
+    assert Map.get(response, "method") == "post"
+    assert Map.get(response, "options") == %{"connect_timeout" => 1337}
+    assert Map.get(response, "url") == "http://localhost/test/incoming_request"
+    assert response |> Map.get("headers") |> Map.get("test-header") == "test-value"
+  end
 end
