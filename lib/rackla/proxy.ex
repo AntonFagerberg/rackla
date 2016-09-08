@@ -10,8 +10,8 @@ defmodule Rackla.Proxy do
   Optional:
   * `username` - Username for proxy, default: `nil`.
   * `password` - Password for proxy, default: `nil`.
-  * `pool` - Define one pool per proxy if you wish to use several proxies 
-    simultaneously, default: `nil`.
+  * `pool` - [Experimental!] Define one pool per proxy if you wish to use 
+    several proxies simultaneously, default: `nil`.
   """
 
   @type t :: %__MODULE__{
