@@ -476,7 +476,7 @@ defmodule Rackla do
   `Rackla.incoming_request_conn`.
   
   Using this macro is the same as writing:
-    conn = incoming_request_conn(conn, options)
+    `conn = incoming_request_conn(conn, options)`
   
   From `Plug.Conn` documentation:
   Because the request body can be of any size, reading the body will only work 
