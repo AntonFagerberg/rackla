@@ -68,8 +68,8 @@ defmodule Rackla do
             
             rackla_proxy = 
               cond do
-                request_proxy != nil -> request_proxy
-                global_proxy != nil -> global_proxy
+                request_proxy -> request_proxy
+                global_proxy -> global_proxy
                 true -> nil
               end
             
@@ -562,7 +562,7 @@ defmodule Rackla do
   defp send_chunks(producers, conn) when is_list(producers) do
     send_thing = 
       fn(thing, remaining_producers, conn) ->
-        thing = unless is_binary(thing), do: inspect(thing), else: thing
+        thing = if is_binary(thing), do: thing, else: inspect(thing)
 
         case chunk(conn, thing) do
           {:ok, new_conn} ->
@@ -618,7 +618,7 @@ defmodule Rackla do
           
         {^pid, thing} ->
           thing = if elem(thing, 0) == :ok, do: elem(thing, 1), else: thing
-          thing = unless is_binary(thing), do: inspect(thing), else: thing
+          thing = if is_binary(thing), do: thing, else: inspect(thing)
           
           case chunk(conn, thing) do
             {:ok, new_conn} ->
