@@ -18,7 +18,7 @@ You can add Rackla to your existing application by adding the following Mix depe
 ```elixir
 defp deps do
   [
-    {:rackla, "~> 1.0"},
+    {:rackla, "~> 1.1"},
     {:cowboy, "~> 1.0"} # Or your web server of choice (which works with Plug)
   ]
 end
@@ -226,8 +226,101 @@ What is cool about this approach is that the image requests are executed concurr
 
 We will also notice, in this example, that the order is nondeterministic - meaning that we will (most likely) get a different order in which the images are sent every time we refresh the page. If we wanted to preserve the ordering of the images, we could either send the ordering with the chunks and let the client code render the images on the correct position - or we could set the `:sync` option to `true` in `response` which would then wait for the responses and then send them in the appropriate order.
 
+### Basic authentication
+Sending the username and password as headers:
+
+```elixir
+get "/auth-example" do
+  url = "http://some-url.com"
+  headers = %{"Authorization" => "Basic #{Base.encode64("username:password")}"}
+
+  %Rackla.Request{url: url, headers: headers}
+  |> request
+  |> response
+end
+```
+
+Adding them as part of the URL:
+
+```elixir
+get "/auth-example" do
+  username = "my_username"
+  password = "my_password"
+  
+  "http://#{username}:#{password}@some-url.com"
+  |> request
+  |> response
+end
+```
+
+### Using a SOCKS5 Proxy or HTTP (Connect) Tunnel
+For more detailed information about using proxies, see the documentation for `Rackla.Proxy`.
+
+#### SOCKS5 using request setting
+```elixir
+%Rackla.Request{url: "http://api.ipify.org", options: %{proxy: %Rackla.Proxy{type: :socks5, host: "localhost", port: 8080}}} 
+|> Rackla.request 
+|> Rackla.collect
+```
+
+#### HTTP Tunnel using global setting
+```elixir
+"http://api.ipify.org" 
+|> Rackla.request(proxy: %Rackla.Proxy{type: :connect, host: "localhost", port: 8080}) 
+|> Rackla.collect
+```
+
+### Adding processing time to a JSON response
+```elixir
+get "/resp-time" do
+  current_millis = fn() ->
+    {mega, sec, micro} = :os.timestamp
+    (mega*1000000 + sec)*1000 + round(micro/1000)
+  end
+
+  urls = ["http://date.jsontest.com/", "http://api.openweathermap.org/data/2.5/weather?q=Malmo,se"]
+
+  start_time = current_millis.()
+
+  urls
+  |> request
+  |> map(fn(http_response) ->
+
+    end_time = current_millis.() - start_time
+
+    case http_response do
+      {:error, reason} ->
+        "HTTP request failed because: #{reason} in time #{end_time}"
+
+      ok_response ->
+        case Poison.decode(ok_response) do
+          {:ok, json_decoded} ->
+            Map.put(json_decoded, "response_time", end_time)
+
+          {:error, reason} ->
+            "Failed to decode response because: #{inspect(reason)} in time #{end_time}"
+        end
+    end
+  end)
+  |> response(json: true)
+end
+```
+
+### Reverse proxy / Request forwarding
+```elixir
+get "/test/a-simple-request-proxy" do
+  # You should check for errors
+  {:ok, the_request} = incoming_request()
+  
+  the_request
+  |> Map.put(:url, "http://new-url.com")
+  |> request
+  |> response
+end
+```
+
 ### More examples
-A collection of smaller example end-points can be found in found [lib/rackla/rackla.ex](https://github.com/AntonFagerberg/rackla/blob/master/lib/router.ex) which illustrates additional techniques that can be used in Rackla.
+A collection of smaller example end-points can be found in found [lib/rackla/router.ex](https://github.com/AntonFagerberg/rackla/blob/master/lib/router.ex) which illustrates additional techniques that can be used in Rackla.
 
 ## The Rackla type
 `Rackla` is also the name of the type used in all of Rackla's functions. Internally, it consists of a list of Elixir processes which communicate with message passing according to a protocol defined inside Rackla (these processes can themselves contain even more nested `Rackla` types). The `Rackla` type should never be modified directly!
@@ -396,6 +489,28 @@ Options:
  * `:json` - If set to true, the encapsulated elements will be converted into
  a JSON encoded string before they are sent to the client. This will also set
  the header "Content-Type" to the appropriate "application/json; charset=utf-8".
+ 
+### incoming_request
+Convert an incoming request (from `Plug`) to a `Rackla.Request`.
+If `options` is specified, it will be added to the `Rackla.Request`.
+For valid options, see documentation for `Rackla.Request`.
+
+Returns either `{:ok, Rackla.Request}` or `{:error, reason}` as per 
+`:gen_tcp.recv/2`.
+
+The `Plug.Conn` will be taken implicitly by looking for a variable named 
+`conn`. If you want to specify which `Plug.Conn` to use, you can use 
+`Rackla.incoming_request_conn`.
+
+Using this macro is the same as writing:
+ `conn = incoming_request_conn(conn, options)`
+
+From `Plug.Conn` documentation:
+Because the request body can be of any size, reading the body will only work 
+once, as Plug will not cache the result of these operations. If you need to 
+access the body multiple times, it is your responsibility to store it. Finally 
+keep in mind some plugs like Plug.Parsers may read the body, so the body may 
+be unavailable after being accessed by such plugs.
 
 ## License
 Rackla source code is released under Apache 2 License. Check LICENSE file for more information.
