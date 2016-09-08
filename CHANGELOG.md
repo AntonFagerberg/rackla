@@ -1,5 +1,15 @@
 # Changelog for Rackla
 
+## 1.1
+ - Added Rackla.Proxy to support SOCKS5 and HTTP tunnel proxies.
+ - Added option :max_redirect to set the number of redirects.
+ - Added option :force_redirect to force redirect (e.g. POST).
+ - Added incoming_request to convert an incoming Plug request to a Rackla.Request.
+ - Removed compiler warnings caused by Elixir 1.3.
+ - Removed compiler warnings from tests.
+ - Updated all dependencies.
+ - Thanks JustMikey & beno!
+
 ## 1.0.1
  - Added option to follow redirect. Thanks bAmpT!
  - Updated all dependencies.
