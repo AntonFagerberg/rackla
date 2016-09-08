@@ -485,7 +485,7 @@ defmodule Rackla do
   keep in mind some plugs like Plug.Parsers may read the body, so the body may 
   be unavailable after being accessed by such plugs.
   """
-  @spec incoming_request(%{}) :: {:ok, Rackla.Request.t} | {:error, term}
+  @spec incoming_request(%{}) :: {:ok, Rackla.Request.t} | {:error, atom}
   defmacro incoming_request(options \\ %{}) do
     quote do
       {var!(conn), rackla_request} = incoming_request_conn(var!(conn), unquote(options))
@@ -497,7 +497,7 @@ defmodule Rackla do
   @doc """
   See documentation for `Rackla.incoming_request`.
   """
-  @spec incoming_request_conn(Plug.Conn.t, %{}) :: {Plug.Conn.t, {:ok, Rackla.Request.t}} | {Plug.Conn.t, {:error, term}}
+  @spec incoming_request_conn(Plug.Conn.t, %{}) :: {Plug.Conn.t, {:ok, Rackla.Request.t}} | {Plug.Conn.t, {:error, atom}}
   def incoming_request_conn(conn, options \\ %{}) do
     response_body = 
       Stream.unfold(Plug.Conn.read_body(conn), fn 
