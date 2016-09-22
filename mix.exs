@@ -18,7 +18,7 @@ defmodule Rackla.Mixfile do
   end
 
   defp applications(:dev), do: applications(:all) ++ [:remix]
-  defp applications(_all), do: [:logger, :cowboy, :plug, :hackney, :poison]
+  defp applications(_all), do: [:logger, :plug, :hackney, :poison]
 
   defp deps do
     [
