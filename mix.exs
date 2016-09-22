@@ -4,10 +4,9 @@ defmodule Rackla.Mixfile do
   def project do
     [
       app: :rackla,
-      version: "1.1.0",
+      version: "1.2.0",
       elixir: "~> 1.0",
       deps: deps,
-      escript: escript,
       package: package,
       description: "Rackla is library for building API-gateways."
     ]
@@ -15,14 +14,11 @@ defmodule Rackla.Mixfile do
 
   # Configuration for the OTP application
   def application do
-    [
-      applications: applications(Mix.env),
-      mod: {Rackla.Application, []}
-    ]
+    [applications: applications(Mix.env)]
   end
 
   defp applications(:dev), do: applications(:all) ++ [:remix]
-  defp applications(_all), do: [:logger, :cowboy, :plug, :hackney]
+  defp applications(_all), do: [:logger, :plug, :hackney, :poison]
 
   defp deps do
     [
@@ -43,19 +39,15 @@ defmodule Rackla.Mixfile do
       licenses: ["Apache 2"],
       links: %{"GitHub" => "https://github.com/AntonFagerberg/rackla"},
       files: [
-        "lib/rackla/rackla.ex",
-        "lib/rackla/request.ex",
-        "lib/rackla/response.ex",
-        "lib/rackla/proxy.ex",
+        "lib/proxy.ex",
+        "lib/rackla.ex",
+        "lib/request.ex",
+        "lib/response.ex",
         "mix.exs",
         "README.md",
         "LICENSE",
         "CHANGELOG.md"
       ]
     ]
-  end
-
-  def escript do
-    [main_module: Rackla.Application]
   end
 end

@@ -1,6 +1,12 @@
 # Changelog for Rackla
+## 1.2.0
+ - Rackla can now be included as a proper library application in production builds.
+ - Code base has been split:
+  - Rackla: https://github.com/AntonFagerberg/rackla (Rackla code used to build the library).
+  - Rackla skeleton: https://github.com/AntonFagerberg/rackla_skeleton (skeleton implementation using Rackla as a library).
+ - Thanks again beno!
 
-## 1.1
+## 1.1.0
  - Added Rackla.Proxy to support SOCKS5 and HTTP tunnel proxies.
  - Added option :max_redirect to set the number of redirects.
  - Added option :force_redirect to force redirect (e.g. POST).

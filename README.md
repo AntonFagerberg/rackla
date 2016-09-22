@@ -6,47 +6,43 @@ Rackla is an open source framework for building API gateways. When we say API ga
 
 With Rackla, you can asynchronously execute multiple HTTP-requests and transform them in any way you want. The results, encapsulated in the `Rackla` type, can be transformed with well known functions such as `map`, `flat_map` and `reduce`. By using the pipe operator in Elixir, you can express your new API end-points as pipelines which start with requests that are piped in to transforming functions and finally piped into a response.
 
-Rackla utilizes [Plug](https://github.com/elixir-lang/plug) to expose new end-points and communicate with clients over HTTP. Internally, it uses [Hackney](https://github.com/benoitc/hackney) to make HTTP requests and [Poison](https://github.com/devinus/poison) for dealing with JSON. A big thank you to everyone involved in these projects!
+Rackla builds on [Plug](https://github.com/elixir-lang/plug) in order to expose new end-points and communicate with clients over HTTP. Internally, it uses [Hackney](https://github.com/benoitc/hackney) to make HTTP requests and [Poison](https://github.com/devinus/poison) for dealing with JSON. A big thank you to everyone involved in these projects!
 
-[The documentation is also available online](http://hexdocs.pm/rackla/).
+[The documentation is also available online on HexDocs](http://hexdocs.pm/rackla/).
 
-## Minimal installation (as Mix dependency)
-(This setup can be a bit complicated, especially if you are not used to working with Plug and it is therefore recommended that you do a "full installation" for your project (described below) which will get you up an running in no time!)
+(This project was initially created as part of my masters's thesis: [Optimising clients with API gateways](https://lup.lub.lu.se/student-papers/search/publication/5469608).)
 
-You can add Rackla to your existing application by adding the following Mix dependencies to `mix.exs`:
+## Skeleton implementation - ready to use
+You can clone the [Rackla Skeleton](https://github.com/AntonFagerberg/rackla_skeleton) project in order to get a complete working API gateway with runnable example end-points and tests. The skeleton project contains everything you need to easily get started - it contains all "infrastructure" needed to easily expose (and use) your end-points, deploy your API gateway to a cloud service such as Heroku or build a Docker image. 
+
+## Using Rackla as a library
+In  `mix.exs`, add `:rackla` and `:cowboy` as dependencies:
 
 ```elixir
 defp deps do
   [
-    {:rackla, "~> 1.1"},
+    {:rackla, "~> 1.2"},
     {:cowboy, "~> 1.0"} # Or your web server of choice (which works with Plug)
   ]
 end
 ```
 
-You have to start Hackney, Plug, Logger and Cowboy:
+and add `:rackla` and `:cowboy` to applications:
 
 ```elixir
 def application do
-  [applications: [:logger, :cowboy, :plug, :hackney]]
+  [applications: [:logger, :rackla, :cowboy]]
 end
 ```
 
-Now you can start using Rackla! It is a good idea to check out [Plug's Github](https://github.com/elixir-lang/plug) for more information about how you can use it to define your own end-points.
+You should read [Plug's documentation](https://github.com/elixir-lang/plug) about defining a router and setting up supervised handlers. You can always look at the [Rackla Skeleton](https://github.com/AntonFagerberg/rackla_skeleton) project for inspiration about how to set everything up.
 
-## Full installation (clone example project)
-
-You can clone [this GitHub repository](https://github.com/AntonFagerberg/rackla) in order to get a complete working API gateway with runnable example end-points and tests. The cloned project includes all "infrastructure" needed to easily expose (run) your end-points or deploy your API gateway to a cloud service such as Heroku. 
-
-### Starting the application
-The application will be started automatically when running `iex -S mix` from the project root. You can also start it by running `mix server`. By default, it will start on port 4000, but you can change the port either from the file `config/config.exs` or by creating an environment variable named `PORT`.
-
-### Deploy to Heroku
-The [Heroku Buildpack for Elixir](https://github.com/HashNuke/heroku-buildpack-elixir) works out of the box for Rackla when doing a full installation.
+([Remix](https://github.com/AgilionApps/remix) is a nice library you can use to get hot reloading during development.)
 
 ## Example usages
 
 ### OpenWeatherMap API (JSON)
+*OpenWeatherMap has started requiring that you sign up and get an API key, the example below does not reflect that.*
 
 OpenWeatherMap has an API with the following end-point that we're going to use: `http://api.openweathermap.org/data/2.5/weather?q=Malmo,SE`. That end-point lets us specify one city to retrieve weather data from, defined by: `?q=Malmo,SE` (found at the end of the URL). 
 
