@@ -647,13 +647,14 @@ defmodule Rackla.Tests do
     assert response == "post redirect done!"
   end
   
-  test "Convert incoming request to Rackla.Request" do
+  test "Convert incoming request to a Rackla.Request" do
     body = "this is a test body"
+    url = "http://localhost:#{@test_router_port}/test/incoming_request_with_options"
     
     response =
       %Rackla.Request{
         method: :post,
-        url: "http://localhost:#{@test_router_port}/test/incoming_request",
+        url: url,
         headers: %{"test-header" => "test-value"},
         body: body
       }
@@ -664,7 +665,27 @@ defmodule Rackla.Tests do
     assert Map.get(response, "body") == body
     assert Map.get(response, "method") == "post"
     assert Map.get(response, "options") == %{"connect_timeout" => 1337}
-    assert Map.get(response, "url") == "http://localhost/test/incoming_request"
+    assert Map.get(response, "url") == url
     assert response |> Map.get("headers") |> Map.get("test-header") == "test-value"
+  end
+  
+  test "Convert incoming request with complex url to a Rackla.Request" do
+    username_password = "user:password"
+    scheme = "http://"
+    url = "#{scheme}localhost:#{@test_router_port}/test/incoming_request?key1=value1&key2=value2"
+    url_with_authorization = url |> String.split(scheme) |> Enum.join("#{scheme}#{username_password}@")
+    
+    response =
+      %Rackla.Request{
+        method: :get,
+        url: url_with_authorization
+      }
+      |> request
+      |> collect
+      |> Poison.decode!
+      
+    assert Map.get(response, "method") == "get"
+    assert Map.get(response, "url") == url
+    assert response |> Map.get("headers") |> Map.get("authorization") == "Basic #{Base.encode64(username_password)}"
   end
 end

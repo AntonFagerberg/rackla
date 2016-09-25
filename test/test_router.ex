@@ -86,8 +86,18 @@ defmodule TestRouter do
     end
   end
   
-  post "/test/incoming_request" do
+  post "/test/incoming_request_with_options" do
     {:ok, rackla_request} = incoming_request(%{connect_timeout: 1337})
+    
+    rackla_request
+    |> Poison.encode!
+    |> just
+    |> response
+  end
+  
+  
+  get "/test/incoming_request" do
+    {:ok, rackla_request} = incoming_request()
     
     rackla_request
     |> Poison.encode!

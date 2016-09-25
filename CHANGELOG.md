@@ -1,4 +1,9 @@
 # Changelog for Rackla
+## 1.2.1
+ - Added query string and port to URL in incoming_request.
+ - Macro incoming_request can now be used without any options.
+ - Thanks again beno!
+
 ## 1.2.0
  - Rackla can now be included as a proper library application in production builds.
  - Code base has been split:

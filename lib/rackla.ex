@@ -486,9 +486,21 @@ defmodule Rackla do
   be unavailable after being accessed by such plugs.
   """
   @spec incoming_request(%{}) :: {:ok, Rackla.Request.t} | {:error, atom}
-  defmacro incoming_request(options \\ %{}) do
+  defmacro incoming_request(options) do
     quote do
       {var!(conn), rackla_request} = incoming_request_conn(var!(conn), unquote(options))
+      _ = var!(conn) # hack to get rid of "unused variable" compiler warning
+      rackla_request
+    end
+  end
+  
+  @doc """ 
+  See see incoming_request with options.
+  """
+  @spec incoming_request() :: {:ok, Rackla.Request.t} | {:error, atom}
+  defmacro incoming_request() do
+    quote do
+      {var!(conn), rackla_request} = incoming_request_conn(var!(conn))
       _ = var!(conn) # hack to get rid of "unused variable" compiler warning
       rackla_request
     end
@@ -524,7 +536,8 @@ defmodule Rackla do
       
       {{:ok, body}, final_conn} ->
         method = conn.method |> String.downcase |> String.to_atom
-        url = "#{Atom.to_string(conn.scheme)}://#{conn.host}#{conn.request_path}"
+        query_string =  if conn.query_string != "", do: "?#{conn.query_string}", else: ""
+        url = "#{Atom.to_string(conn.scheme)}://#{conn.host}:#{conn.port}#{conn.request_path}#{query_string}"
         headers = Enum.into(conn.req_headers, %{})
         
         rackla_request =
